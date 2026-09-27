@@ -1,24 +1,3 @@
-name: Build Weather Widget
-
-on:
-  push:
-    paths:
-      - 'RETRO_WEATHER.html'
-      - '.github/workflows/auto-build.yml'
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
       - name: Generate JS Widget from RETRO_WEATHER.html
         run: |
           node -e "
@@ -31,11 +10,18 @@ jobs:
 
           let rawHtml = fs.readFileSync('RETRO_WEATHER.html', 'utf8');
 
-          // Shadow DOM内にGoogle Fonts (DotGothic16) を確実に読み込む
+          // 1. Google Fonts の読み込みを自動注入
           const fontImport = '<style>@import url(\"https://fonts.googleapis.com/css2?family=DotGothic16&display=swap\");</style>\n';
           if (!rawHtml.includes('DotGothic16')) {
             rawHtml = fontImport + rawHtml;
           }
+
+          // 2. 既存の font-family 指定（sans-serif や monospace 等）をすべて 'DotGothic16', sans-serif に自動置換
+          rawHtml = rawHtml.replace(/font-family\s*:\s*[^;\}]+([;\}])/g, \"font-family: 'DotGothic16', sans-serif !important\$1\");
+
+          // 3. スタイルタグの末尾に、今後増える全要素（* や :host）への強制適用ルールを自動追加
+          const globalFontRule = '\n:host, *, button, input, select, textarea { font-family: \"DotGothic16\", sans-serif !important; }\n</style>';
+          rawHtml = rawHtml.replace('</style>', globalFontRule);
 
           const widgetScript = \`(function() {
             if (!document.querySelector('link[href*=\"DotGothic16\"]')) {
@@ -544,10 +530,3 @@ jobs:
 
           fs.writeFileSync('weather_widget.js', widgetScript, 'utf8');
           "
-
-      - name: Commit and Push generated weather_widget.js
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add weather_widget.js
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix workflow build script" && git push)
