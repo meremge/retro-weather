@@ -28,19 +28,13 @@ jobs:
 
           let rawHtml = fs.readFileSync('RETRO_WEATHER.html', 'utf8');
 
-          // 1. Google Fonts の自動注入
+          // 1. Google Fonts (DotGothic16) の読み込みタグを最上部に確実に挿入
           const fontImport = '<style>@import url("https://fonts.googleapis.com/css2?family=DotGothic16&display=swap");</style>\n';
           if (!rawHtml.includes('DotGothic16')) {
             rawHtml = fontImport + rawHtml;
           }
 
-          // 2. 既存フォント指定の置換
-          rawHtml = rawHtml.replace(/font-family\s*:\s*[^;\}]+([;\}])/g, "font-family: 'DotGothic16', sans-serif !important$1");
-
-          // 3. 全要素への強制的フォント適用ルールの追加
-          const globalFontRule = '\n:host, *, button, input, select, textarea { font-family: "DotGothic16", sans-serif !important; }\n</style>';
-          rawHtml = rawHtml.replace('</style>', globalFontRule);
-
+          // 2. 元のHTMLに含まれる全てのスタイル・色指定・レイアウトをそのまま100%維持するスクリプト生成
           const widgetScript = `(function() {
             if (!document.querySelector('link[href*="DotGothic16"]')) {
               const fontLink = document.createElement('link');
@@ -83,7 +77,6 @@ jobs:
                 this.loadSavedLocations();
                 
                 const hasScriptParam = this.checkParams();
-
                 this.renderCustomSelect();
 
                 const hasVisited = localStorage.getItem(VISITED_KEY);
@@ -100,6 +93,7 @@ jobs:
               }
 
               render() {
+                // 原本のHTML/CSS構造をそのままShadow DOMに全注入（色・フォント・表示ルールを一切壊さない）
                 this.shadowRoot.innerHTML = ${JSON.stringify(rawHtml)};
               }
 
@@ -274,12 +268,11 @@ jobs:
                 let params = new URLSearchParams(window.location.search);
                 
                 if (!params.get('lat')) {
-                  const scripts = document.querySelectorAll('script[src*="weather_widget.js"]');
+                  const scripts = Array.from(document.querySelectorAll('script')).filter(s => s.src && s.src.includes('weather_widget.js'));
                   if (scripts.length > 0) {
                     const lastScript = scripts[scripts.length - 1];
-                    const src = lastScript.getAttribute('src');
-                    if (src && src.includes('?')) {
-                      params = new URLSearchParams(src.split('?')[1]);
+                    if (lastScript.src.includes('?')) {
+                      params = new URLSearchParams(lastScript.src.split('?')[1]);
                     }
                   }
                 }
@@ -288,7 +281,7 @@ jobs:
                 const lon = parseFloat(params.get('lon'));
                 const name = params.get('name');
 
-                if (lat && lon && name) {
+                if (!isNaN(lat) && !isNaN(lon) && name) {
                   const decodedName = decodeURIComponent(name);
                   const paramLoc = { name: decodedName, lat: lat, lon: lon, jmaFile: "130000", areaName: "東京地方", icon: ICON_SEARCH, isPreset: false };
                   
@@ -411,22 +404,30 @@ jobs:
                 this.fetchWeatherData(this.selectedLocation);
               }
 
+              // 描画・文字更新の汎用処理（将来要素が増えてもそのまま画面反映可能）
+              updateElementText(id, value) {
+                const el = this.shadowRoot.getElementById(id);
+                if (el) {
+                  el.innerText = value;
+                  // 非表示フラグや意図しない display:none が残らないよう確実化
+                  if (el.style.display === 'none') el.style.display = '';
+                }
+              }
+
               async fetchWeatherData(locationData) {
                 const sr = this.shadowRoot;
                 const loadingImg = sr.getElementById('loadingImg');
                 const weatherImg = sr.getElementById('weatherImg');
-                const weatherTelop = sr.getElementById('weatherTelop');
-                const displayLocationName = sr.getElementById('displayLocationName');
 
                 if (loadingImg) loadingImg.style.display = 'inline';
                 if (weatherImg) weatherImg.style.display = 'none';
-                if (weatherTelop) weatherTelop.innerText = '通信中...';
+                this.updateElementText('weatherTelop', '通信中...');
 
                 let displayName = \`[ \${locationData.name} ]\`;
                 if (locationData.name === "現在地" && locationData.subName) {
                   displayName = \`[ 現在地 : \${locationData.subName} ]\`;
                 }
-                if (displayLocationName) displayLocationName.innerText = displayName;
+                this.updateElementText('displayLocationName', displayName);
 
                 try {
                   const jmaUrl = \`https://www.jma.go.jp/bosai/forecast/data/forecast/\${locationData.jmaFile}.json\`;
@@ -453,12 +454,13 @@ jobs:
                   const birchPollen = pollenRes?.current?.birch_pollen ?? 0;
                   const pollenText = birchPollen > 0 ? \`\${birchPollen} (飛散中)\` : '少ない/無';
 
-                  if (weatherTelop) weatherTelop.innerText = jmaWeatherTelop;
-                  if (sr.getElementById('tempDisplay')) sr.getElementById('tempDisplay').innerText = \`\${currentTemp} ℃\`;
-                  if (sr.getElementById('windSpeed')) sr.getElementById('windSpeed').innerText = windSpeed;
-                  if (sr.getElementById('uvIndex')) sr.getElementById('uvIndex').innerText = uvIndex;
-                  if (sr.getElementById('pressureDisplay')) sr.getElementById('pressureDisplay').innerText = pressure;
-                  if (sr.getElementById('pollenIndex')) sr.getElementById('pollenIndex').innerText = pollenText;
+                  // 天気テキスト（くもり 所により 雨 など）を含む全ての要素を確実に画面描画
+                  this.updateElementText('weatherTelop', jmaWeatherTelop);
+                  this.updateElementText('tempDisplay', \`\${currentTemp} ℃\`);
+                  this.updateElementText('windSpeed', windSpeed);
+                  this.updateElementText('uvIndex', uvIndex);
+                  this.updateElementText('pressureDisplay', pressure);
+                  this.updateElementText('pollenIndex', pollenText);
 
                   this.currentFetchedData = { weather: jmaWeatherTelop, temp: currentTemp, pressure: pressure, wind: windSpeed, uv: uvIndex, pollen: pollenText };
 
@@ -472,7 +474,7 @@ jobs:
 
                 } catch (error) {
                   console.error('Fetch Error:', error);
-                  if (weatherTelop) weatherTelop.innerText = 'データ取得失敗';
+                  this.updateElementText('weatherTelop', 'データ取得失敗');
                 }
               }
 
@@ -483,13 +485,13 @@ jobs:
                 if (iconEl) iconEl.style.display = 'inline-block';
 
                 if (pressure < 1005) {
-                  if (alertEl) { alertEl.innerText = '低気圧警戒！無理せず休もう'; alertEl.style.color = '#ff3366'; }
+                  if (alertEl) { alertEl.innerText = '低気圧警戒！無理せず休もう'; }
                   if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a0.png';
                 } else if (pressure < 1010) {
-                  if (alertEl) { alertEl.innerText = 'やや低気圧：頭痛・倦怠感注意'; alertEl.style.color = '#ff9900'; }
+                  if (alertEl) { alertEl.innerText = 'やや低気圧：頭痛・倦怠感注意'; }
                   if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a1.png';
                 } else {
-                  if (alertEl) { alertEl.innerText = '気圧安定：快適コンディション'; alertEl.style.color = '#00ffcc'; }
+                  if (alertEl) { alertEl.innerText = '気圧安定：快適コンディション'; }
                   if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2728.png';
                 }
               }
@@ -555,5 +557,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add weather_widget.js
-          git commit -m "Auto-generate weather_widget.js with forced font rule" || echo "No changes to commit"
+          git commit -m "Ensure complete rendering and exact style preservation for all present and future elements" || echo "No changes to commit"
           git push
