@@ -1,0 +1,31 @@
+name: Build Weather Widget
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate JS Widget from RETRO_WEATHER.html
+        run: |
+          if [ ! -f "RETRO_WEATHER.html" ]; then
+            echo "Error: RETRO_WEATHER.html not found."
+            exit 1
+          fi
+          
+          echo "const weatherWidgetContent = \`" > weather_widget.js
+          cat RETRO_WEATHER.html >> weather_widget.js
+          echo "\`;" >> weather_widget.js
+          echo "console.log('Weather widget updated successfully');" >> weather_widget.js
+
+      - name: Commit and push updated JS
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto-generate weather_widget.js from RETRO_WEATHER.html"
+          file_pattern: "weather_widget.js"
