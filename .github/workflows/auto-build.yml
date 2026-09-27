@@ -31,18 +31,13 @@ jobs:
 
           let rawHtml = fs.readFileSync('RETRO_WEATHER.html', 'utf8');
 
-          // @import で DotGothic16 を Shadow DOM 内に強力適用
-          const fontImport = \"@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');\n\";
-          if (!rawHtml.includes('fonts.googleapis.com')) {
-            if (rawHtml.includes('<style>')) {
-              rawHtml = rawHtml.replace('<style>', '<style>\n' + fontImport);
-            } else {
-              rawHtml = '<style>' + fontImport + '</style>\n' + rawHtml;
-            }
+          // Shadow DOM内にGoogle Fonts (DotGothic16) を確実に読み込む
+          const fontImport = '<style>@import url(\"https://fonts.googleapis.com/css2?family=DotGothic16&display=swap\");</style>\n';
+          if (!rawHtml.includes('DotGothic16')) {
+            rawHtml = fontImport + rawHtml;
           }
 
           const widgetScript = \`(function() {
-            // Shadow DOM外（親ページ）にもフォントを一度ロードさせて確実にキャッシュさせる
             if (!document.querySelector('link[href*=\"DotGothic16\"]')) {
               const fontLink = document.createElement('link');
               fontLink.rel = 'stylesheet';
@@ -521,7 +516,7 @@ jobs:
                 } else {
                   try {
                     await navigator.clipboard.writeText(shareText);
-                    alert(\`お天気メモをコピーしました！\n\n\${shareText}\`);
+                    alert('お天気メモをコピーしました！');
                   } catch (err) {
                     prompt('以下のテキストをコピーしてください:', shareText);
                   }
@@ -555,4 +550,4 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add weather_widget.js
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix Google Fonts DotGothic16 loading in Shadow DOM" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix workflow build script" && git push)
