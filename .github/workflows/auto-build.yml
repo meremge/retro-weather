@@ -1,6 +1,24 @@
-      - name: Generate JS Widget from RETRO_WEATHER.html
+name: Auto Build Weather Widget
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Build JS Widget
         run: |
-          node -e "
+          cat << 'EOF' > build-widget.js
           const fs = require('fs');
 
           if (!fs.existsSync('RETRO_WEATHER.html')) {
@@ -10,43 +28,43 @@
 
           let rawHtml = fs.readFileSync('RETRO_WEATHER.html', 'utf8');
 
-          // 1. Google Fonts の読み込みを自動注入
-          const fontImport = '<style>@import url(\"https://fonts.googleapis.com/css2?family=DotGothic16&display=swap\");</style>\n';
+          // 1. Google Fonts の自動注入
+          const fontImport = '<style>@import url("https://fonts.googleapis.com/css2?family=DotGothic16&display=swap");</style>\n';
           if (!rawHtml.includes('DotGothic16')) {
             rawHtml = fontImport + rawHtml;
           }
 
-          // 2. 既存の font-family 指定（sans-serif や monospace 等）をすべて 'DotGothic16', sans-serif に自動置換
-          rawHtml = rawHtml.replace(/font-family\s*:\s*[^;\}]+([;\}])/g, \"font-family: 'DotGothic16', sans-serif !important\$1\");
+          // 2. 既存フォント指定の置換
+          rawHtml = rawHtml.replace(/font-family\s*:\s*[^;\}]+([;\}])/g, "font-family: 'DotGothic16', sans-serif !important$1");
 
-          // 3. スタイルタグの末尾に、今後増える全要素（* や :host）への強制適用ルールを自動追加
-          const globalFontRule = '\n:host, *, button, input, select, textarea { font-family: \"DotGothic16\", sans-serif !important; }\n</style>';
+          // 3. 全要素への強制的フォント適用ルールの追加
+          const globalFontRule = '\n:host, *, button, input, select, textarea { font-family: "DotGothic16", sans-serif !important; }\n</style>';
           rawHtml = rawHtml.replace('</style>', globalFontRule);
 
-          const widgetScript = \`(function() {
-            if (!document.querySelector('link[href*=\"DotGothic16\"]')) {
+          const widgetScript = `(function() {
+            if (!document.querySelector('link[href*="DotGothic16"]')) {
               const fontLink = document.createElement('link');
               fontLink.rel = 'stylesheet';
               fontLink.href = 'https://fonts.googleapis.com/css2?family=DotGothic16&display=swap';
               document.head.appendChild(fontLink);
             }
 
-            const ICON_GPS = \"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png\";
-            const ICON_PIN = \"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png\";
-            const ICON_SEARCH = \"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f50d.png\";
+            const ICON_GPS = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png";
+            const ICON_PIN = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png";
+            const ICON_SEARCH = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f50d.png";
             const STORAGE_KEY = 'retro_weather_custom_cities';
             const VISITED_KEY = 'retro_weather_visited';
             const GPS_ALLOWED_KEY = 'retro_weather_gps_allowed';
 
-            const GITHUB_USERNAME = \"meremge\"; 
-            const GITHUB_REPO = \"retro-weather\";
+            const GITHUB_USERNAME = "meremge"; 
+            const GITHUB_REPO = "retro-weather";
 
             const defaultPresets = [
-              { name: \"現在地\", lat: 35.6895, lon: 139.6917, jmaFile: \"130000\", areaName: \"東京地方\", icon: ICON_GPS, isPreset: true, subName: \"\" },
-              { name: \"所沢\", lat: 35.7994, lon: 139.4692, jmaFile: \"110000\", areaName: \"南部\", icon: ICON_PIN, isPreset: true },
-              { name: \"東京\", lat: 35.6895, lon: 139.6917, jmaFile: \"130000\", areaName: \"東京地方\", icon: ICON_PIN, isPreset: true },
-              { name: \"大阪\", lat: 34.6937, lon: 135.5023, jmaFile: \"270000\", areaName: \"大阪府\", icon: ICON_PIN, isPreset: true },
-              { name: \"札幌\", lat: 43.0621, lon: 141.3544, jmaFile: \"016000\", areaName: \"石狩地方\", icon: ICON_PIN, isPreset: true }
+              { name: "現在地", lat: 35.6895, lon: 139.6917, jmaFile: "130000", areaName: "東京地方", icon: ICON_GPS, isPreset: true, subName: "" },
+              { name: "所沢", lat: 35.7994, lon: 139.4692, jmaFile: "110000", areaName: "南部", icon: ICON_PIN, isPreset: true },
+              { name: "東京", lat: 35.6895, lon: 139.6917, jmaFile: "130000", areaName: "東京地方", icon: ICON_PIN, isPreset: true },
+              { name: "大阪", lat: 34.6937, lon: 135.5023, jmaFile: "270000", areaName: "大阪府", icon: ICON_PIN, isPreset: true },
+              { name: "札幌", lat: 43.0621, lon: 141.3544, jmaFile: "016000", areaName: "石狩地方", icon: ICON_PIN, isPreset: true }
             ];
 
             class RetroWeatherWidget extends HTMLElement {
@@ -56,7 +74,7 @@
 
                 this.currentLocations = [...defaultPresets];
                 this.selectedLocation = defaultPresets[2];
-                this.currentFetchedData = { weather: \"--\", temp: \"--\", pressure: \"--\", wind: \"--\", uv: \"--\", pollen: \"--\" };
+                this.currentFetchedData = { weather: "--", temp: "--", pressure: "--", wind: "--", uv: "--", pollen: "--" };
               }
 
               connectedCallback() {
@@ -82,7 +100,7 @@
               }
 
               render() {
-                this.shadowRoot.innerHTML = \${JSON.stringify(rawHtml)};
+                this.shadowRoot.innerHTML = ${JSON.stringify(rawHtml)};
               }
 
               initElements() {
@@ -167,13 +185,13 @@
 
               updateEmbedCodeText() {
                 let locName = this.selectedLocation.name;
-                if (this.selectedLocation.name === \"現在地\" && this.selectedLocation.subName) {
+                if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
                   locName = this.selectedLocation.subName;
                 }
 
-                const query = \\\`?lat=\\\${this.selectedLocation.lat}&lon=\\\${this.selectedLocation.lon}&name=\\\${encodeURIComponent(locName)}\\\`;
-                const scriptUrl = \\\`https://\\\${GITHUB_USERNAME}.github.io/\\\${GITHUB_REPO}/weather_widget.js\\\${query}\\\`;
-                const embedCode = \\\`<div id=\"retro-weather-widget\"></div>\\\\n<script src=\"\\\${scriptUrl}\" defer></script>\\\`;
+                const query = \`?lat=\${this.selectedLocation.lat}&lon=\${this.selectedLocation.lon}&name=\${encodeURIComponent(locName)}\`;
+                const scriptUrl = \`https://\${GITHUB_USERNAME}.github.io/\${GITHUB_REPO}/weather_widget.js\${query}\`;
+                const embedCode = \`<div id="retro-weather-widget"></div>\\n<script src="\${scriptUrl}" defer></script>\`;
 
                 if (this.embedCodeText) {
                   if ('value' in this.embedCodeText) {
@@ -189,12 +207,12 @@
               renderCustomSelect() {
                 if (!this.selectOptions || !this.selectedText) return;
                 this.selectOptions.innerHTML = '';
-                this.selectedText.innerHTML = \\\`
-                  <span class=\"option-label\">
-                    <img class=\"pixel-icon option-icon\" src=\"\\\${this.selectedLocation.icon}\">
-                    \\\${this.selectedLocation.name}
+                this.selectedText.innerHTML = \`
+                  <span class="option-label">
+                    <img class="pixel-icon option-icon" src="\${this.selectedLocation.icon}">
+                    \${this.selectedLocation.name}
                   </span>
-                \\\`;
+                \`;
 
                 this.currentLocations.forEach((loc, index) => {
                   const optionDiv = document.createElement('div');
@@ -202,7 +220,7 @@
 
                   const labelDiv = document.createElement('div');
                   labelDiv.className = 'option-label';
-                  labelDiv.innerHTML = \\\`<img class=\"pixel-icon option-icon\" src=\"\\\${loc.icon}\"> \\\${loc.name}\\\`;
+                  labelDiv.innerHTML = \`<img class="pixel-icon option-icon" src="\${loc.icon}"> \${loc.name}\`;
                   
                   optionDiv.appendChild(labelDiv);
 
@@ -256,7 +274,7 @@
                 let params = new URLSearchParams(window.location.search);
                 
                 if (!params.get('lat')) {
-                  const scripts = document.querySelectorAll('script[src*=\"weather_widget.js\"]');
+                  const scripts = document.querySelectorAll('script[src*="weather_widget.js"]');
                   if (scripts.length > 0) {
                     const lastScript = scripts[scripts.length - 1];
                     const src = lastScript.getAttribute('src');
@@ -272,7 +290,7 @@
 
                 if (lat && lon && name) {
                   const decodedName = decodeURIComponent(name);
-                  const paramLoc = { name: decodedName, lat: lat, lon: lon, jmaFile: \"130000\", areaName: \"東京地方\", icon: ICON_SEARCH, isPreset: false };
+                  const paramLoc = { name: decodedName, lat: lat, lon: lon, jmaFile: "130000", areaName: "東京地方", icon: ICON_SEARCH, isPreset: false };
                   
                   const exists = this.currentLocations.some(l => l.name === decodedName);
                   if (!exists) {
@@ -297,12 +315,12 @@
                 if (weatherTelopEl) weatherTelopEl.innerText = '検索中...';
 
                 try {
-                  const geoUrl = \\\`https://geocoding-api.open-meteo.com/v1/search?name=\\\${encodeURIComponent(query)}&count=5&language=ja&format=json\\\`;
+                  const geoUrl = \`https://geocoding-api.open-meteo.com/v1/search?name=\${encodeURIComponent(query)}&count=5&language=ja&format=json\`;
                   let res = await fetch(geoUrl).then(r => r.json());
                   let place = res.results?.find(p => p.country_code === 'JP') || res.results?.[0];
 
                   if (!place) {
-                    const osmUrl = \\\`https://nominatim.openstreetmap.org/search?format=json&q=\\\${encodeURIComponent(query + ' 日本')}&limit=1\\\`;
+                    const osmUrl = \`https://nominatim.openstreetmap.org/search?format=json&q=\${encodeURIComponent(query + ' 日本')}&limit=1\`;
                     const osmRes = await fetch(osmUrl).then(r => r.json());
                     if (osmRes && osmRes.length > 0) {
                       place = { name: query, latitude: parseFloat(osmRes[0].lat), longitude: parseFloat(osmRes[0].lon) };
@@ -315,7 +333,7 @@
                     return;
                   }
 
-                  const newLoc = { name: query, lat: place.latitude, lon: place.longitude, jmaFile: \"130000\", areaName: \"東京地方\", icon: ICON_SEARCH, isPreset: false };
+                  const newLoc = { name: query, lat: place.latitude, lon: place.longitude, jmaFile: "130000", areaName: "東京地方", icon: ICON_SEARCH, isPreset: false };
 
                   const exists = this.currentLocations.some(l => l.name === newLoc.name);
                   if (!exists) {
@@ -357,11 +375,11 @@
                   localStorage.setItem(GPS_ALLOWED_KEY, 'true');
                   this.closeInitModal();
 
-                  let detectedCity = \"\";
+                  let detectedCity = "";
                   try {
-                    const res = await fetch(\\\`https://nominatim.openstreetmap.org/reverse?format=json&lat=\\\${lat}&lon=\\\${lon}&zoom=12&accept-language=ja\\\`).then(r => r.json());
+                    const res = await fetch(\`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${lat}&lon=\${lon}&zoom=12&accept-language=ja\`).then(r => r.json());
                     if (res && res.address) {
-                      detectedCity = res.address.city || res.address.town || res.address.village || res.address.suburb || res.address.county || \"\";
+                      detectedCity = res.address.city || res.address.town || res.address.village || res.address.suburb || res.address.county || "";
                     }
                   } catch (e) {}
 
@@ -370,7 +388,7 @@
                     if (this.clearInputBtn) this.clearInputBtn.style.display = 'block';
                   }
 
-                  const gpsLoc = { name: \"現在地\", subName: detectedCity, lat: lat, lon: lon, jmaFile: \"130000\", areaName: \"東京地方\", icon: ICON_GPS, isPreset: true };
+                  const gpsLoc = { name: "現在地", subName: detectedCity, lat: lat, lon: lon, jmaFile: "130000", areaName: "東京地方", icon: ICON_GPS, isPreset: true };
 
                   this.currentLocations[0] = gpsLoc;
                   this.selectedLocation = gpsLoc;
@@ -404,16 +422,16 @@
                 if (weatherImg) weatherImg.style.display = 'none';
                 if (weatherTelop) weatherTelop.innerText = '通信中...';
 
-                let displayName = \\\`[ \\\${locationData.name} ]\\\`;
-                if (locationData.name === \"現在地\" && locationData.subName) {
-                  displayName = \\\`[ 現在地 : \\\${locationData.subName} ]\\\`;
+                let displayName = \`[ \${locationData.name} ]\`;
+                if (locationData.name === "現在地" && locationData.subName) {
+                  displayName = \`[ 現在地 : \${locationData.subName} ]\`;
                 }
                 if (displayLocationName) displayLocationName.innerText = displayName;
 
                 try {
-                  const jmaUrl = \\\`https://www.jma.go.jp/bosai/forecast/data/forecast/\\\${locationData.jmaFile}.json\\\`;
-                  const openMeteoUrl = \\\`https://api.open-meteo.com/v1/forecast?latitude=\\\${locationData.lat}&longitude=\\\${locationData.lon}&current=temperature_2m,wind_speed_10m,uv_index,surface_pressure&timezone=Asia%2FTokyo\\\`;
-                  const pollenUrl = \\\`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=\\\${locationData.lat}&longitude=\\\${locationData.lon}&current=birch_pollen&timezone=Asia%2FTokyo\\\`;
+                  const jmaUrl = \`https://www.jma.go.jp/bosai/forecast/data/forecast/\${locationData.jmaFile}.json\`;
+                  const openMeteoUrl = \`https://api.open-meteo.com/v1/forecast?latitude=\${locationData.lat}&longitude=\${locationData.lon}&current=temperature_2m,wind_speed_10m,uv_index,surface_pressure&timezone=Asia%2FTokyo\`;
+                  const pollenUrl = \`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=\${locationData.lat}&longitude=\${locationData.lon}&current=birch_pollen&timezone=Asia%2FTokyo\`;
 
                   const [jmaRes, openMeteoRes, pollenRes] = await Promise.all([
                     fetch(jmaUrl).then(r => r.json()).catch(() => null),
@@ -421,7 +439,7 @@
                     fetch(pollenUrl).then(r => r.json()).catch(() => null)
                   ]);
 
-                  let jmaWeatherTelop = \"晴れ/曇り\";
+                  let jmaWeatherTelop = "晴れ/曇り";
                   if (jmaRes && jmaRes[0]?.timeSeries[0]?.areas) {
                     const areas = jmaRes[0].timeSeries[0].areas;
                     const targetArea = areas.find(a => a.area.name.includes(locationData.areaName)) || areas[0];
@@ -433,10 +451,10 @@
                   const uvIndex = openMeteoRes.current.uv_index;
                   const pressure = openMeteoRes.current.surface_pressure;
                   const birchPollen = pollenRes?.current?.birch_pollen ?? 0;
-                  const pollenText = birchPollen > 0 ? \\\`\\\${birchPollen} (飛散中)\\\` : '少ない/無';
+                  const pollenText = birchPollen > 0 ? \`\${birchPollen} (飛散中)\` : '少ない/無';
 
                   if (weatherTelop) weatherTelop.innerText = jmaWeatherTelop;
-                  if (sr.getElementById('tempDisplay')) sr.getElementById('tempDisplay').innerText = \\\`\\\${currentTemp} ℃\\\`;
+                  if (sr.getElementById('tempDisplay')) sr.getElementById('tempDisplay').innerText = \`\${currentTemp} ℃\`;
                   if (sr.getElementById('windSpeed')) sr.getElementById('windSpeed').innerText = windSpeed;
                   if (sr.getElementById('uvIndex')) sr.getElementById('uvIndex').innerText = uvIndex;
                   if (sr.getElementById('pressureDisplay')) sr.getElementById('pressureDisplay').innerText = pressure;
@@ -487,18 +505,18 @@
               async handleShare() {
                 const baseUrl = window.location.origin + window.location.pathname;
                 let shareName = this.selectedLocation.name;
-                if (this.selectedLocation.name === \"現在地\" && this.selectedLocation.subName) {
+                if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
                   shareName = this.selectedLocation.subName;
                 }
 
-                const shareUrl = \\\`\\\${baseUrl}?lat=\\\${this.selectedLocation.lat}&lon=\\\${this.selectedLocation.lon}&name=\\\${encodeURIComponent(shareName)}\\\`;
+                const shareUrl = \`\${baseUrl}?lat=\${this.selectedLocation.lat}&lon=\${this.selectedLocation.lon}&name=\${encodeURIComponent(shareName)}\`;
                 const now = new Date();
-                const timeStr = \\\`\\\${now.getFullYear()}年\\\${now.getMonth()+1}月\\\${now.getDate()}日 \\\${String(now.getHours()).padStart(2,'0')}:\\\${String(now.getMinutes()).padStart(2,'0')}\\\`;
+                const timeStr = \`\${now.getFullYear()}年\${now.getMonth()+1}月\${now.getDate()}日 \${String(now.getHours()).padStart(2,'0')}:\${String(now.getMinutes()).padStart(2,'0')}\`;
 
-                const shareText = \\\`【お天気メモ日記】\\\\n--------------------\\\\n📅 日時: \\\${timeStr}\\\\n📍 場所: \\\${shareName}\\\\n\\\\n🌤️ 天気: \\\${this.currentFetchedData.weather}\\\\n🌡️ 気温: \\\${this.currentFetchedData.temp} ℃\\\\n🎈 気圧: \\\${this.currentFetchedData.pressure} hPa\\\\n💨 風速: \\\${this.currentFetchedData.wind} m/s\\\\n☀️ UV指数: \\\${this.currentFetchedData.uv}\\\\n🌲 スギ花粉: \\\${this.currentFetchedData.pollen}\\\\n--------------------\\\\n🔗 今日のリアルタイムお天気リンク:\\\\n\\\${shareUrl}\\\`;
+                const shareText = \`【お天気メモ日記】\\n--------------------\\n📅 日時: \${timeStr}\\n📍 場所: \${shareName}\\n\\n🌤️ 天気: \${this.currentFetchedData.weather}\\n🌡️ 気温: \${this.currentFetchedData.temp} ℃\\n🎈 気圧: \${this.currentFetchedData.pressure} hPa\\n💨 風速: \${this.currentFetchedData.wind} m/s\\n☀️ UV指数: \${this.currentFetchedData.uv}\\n🌲 スギ花粉: \${this.currentFetchedData.pollen}\\n--------------------\\n🔗 今日のリアルタイムお天気リンク:\\n\${shareUrl}\`;
 
                 if (navigator.share) {
-                  try { await navigator.share({ title: \\\`\\\${shareName}のお天気メモ\\\`, text: shareText }); } catch (err) {}
+                  try { await navigator.share({ title: \`\${shareName}のお天気メモ\`, text: shareText }); } catch (err) {}
                 } else {
                   try {
                     await navigator.clipboard.writeText(shareText);
@@ -526,7 +544,16 @@
               }
             });
           })();
-          \`;
+          `;
 
           fs.writeFileSync('weather_widget.js', widgetScript, 'utf8');
-          "
+          EOF
+          node build-widget.js
+
+      - name: Commit and Push JS Widget
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add weather_widget.js
+          git commit -m "Auto-generate weather_widget.js with forced font rule" || echo "No changes to commit"
+          git push
