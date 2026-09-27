@@ -32,7 +32,6 @@
       this.initElements();
       this.loadSavedLocations();
       
-      // 1. URLパラメータ（ページ直移動）または scriptタグのsrcパラメータ（埋め込み）から読み込む
       const hasScriptParam = this.checkParams();
 
       this.renderCustomSelect();
@@ -40,7 +39,6 @@
       const hasVisited = localStorage.getItem(VISITED_KEY);
       const isGpsAllowed = localStorage.getItem(GPS_ALLOWED_KEY) === 'true';
 
-      // パラメータで指定がある場合は現在地モーダルを出さずにその場所を表示
       if (hasScriptParam) {
         this.fetchWeatherData(this.selectedLocation);
       } else if (!hasVisited || !isGpsAllowed) {
@@ -109,18 +107,9 @@
 
       this.shareBtn?.addEventListener('click', () => this.handleShare());
 
-      // 【埋め込みコード生成処理】選択中の場所のパラメータを付与！
+      // 【埋め込みモーダル開閉＆コード動的更新】
       this.openEmbedModal?.addEventListener('click', () => {
-        let locName = this.selectedLocation.name;
-        if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
-          locName = this.selectedLocation.subName;
-        }
-
-        const query = `?lat=${this.selectedLocation.lat}&lon=${this.selectedLocation.lon}&name=${encodeURIComponent(locName)}`;
-        const scriptUrl = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/weather_widget.js${query}`;
-        const embedCode = `<div id="retro-weather-widget"></div>\n<script src="${scriptUrl}" defer></script>`;
-        
-        if (this.embedCodeText) this.embedCodeText.value = embedCode;
+        this.updateEmbedCodeText();
         if (this.embedModal) this.embedModal.style.display = 'flex';
       });
 
@@ -129,11 +118,13 @@
       });
 
       this.copyEmbedBtn?.addEventListener('click', async () => {
+        this.updateEmbedCodeText();
+        const targetText = this.embedCodeText ? (this.embedCodeText.value || this.embedCodeText.innerText) : '';
         try {
-          await navigator.clipboard.writeText(this.embedCodeText.value);
+          await navigator.clipboard.writeText(targetText);
           alert('埋め込みコードをコピーしました！');
         } catch (e) {
-          this.embedCodeText?.select();
+          if (this.embedCodeText && this.embedCodeText.select) this.embedCodeText.select();
           document.execCommand('copy');
           alert('コードをコピーしました！');
         }
@@ -141,6 +132,25 @@
 
       this.searchBtn?.addEventListener('click', () => this.handleSearch());
       this.gpsBtn?.addEventListener('click', () => this.executeGpsFetch(true));
+    }
+
+    // 現在の選択場所のパラメータを組み込んだ埋め込みコードをテキストエリア/要素にセット
+    updateEmbedCodeText() {
+      let locName = this.selectedLocation.name;
+      if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
+        locName = this.selectedLocation.subName;
+      }
+
+      const query = `?lat=${this.selectedLocation.lat}&lon=${this.selectedLocation.lon}&name=${encodeURIComponent(locName)}`;
+      const scriptUrl = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/weather_widget.js${query}`;
+      const embedCode = `<div id="retro-weather-widget"></div>\n<script src="${scriptUrl}" defer></script>`;
+
+      if (this.embedCodeText) {
+        if ('value' in this.embedCodeText) {
+          this.embedCodeText.value = embedCode;
+        }
+        this.embedCodeText.innerText = embedCode;
+      }
     }
 
     openInitModal() { if (this.initLocationModal) this.initLocationModal.style.display = 'flex'; }
@@ -212,11 +222,9 @@
       });
     }
 
-    // 【パラメータ検出処理】ページURL または scriptタグのsrcから経度・緯度・地名を取得
     checkParams() {
       let params = new URLSearchParams(window.location.search);
       
-      // ページURLにパラメータがなければ、読み込まれている script タグの src から探す
       if (!params.get('lat')) {
         const scripts = document.querySelectorAll('script[src*="weather_widget.js"]');
         if (scripts.length > 0) {
@@ -236,7 +244,6 @@
         const decodedName = decodeURIComponent(name);
         const paramLoc = { name: decodedName, lat: lat, lon: lon, jmaFile: "130000", areaName: "東京地方", icon: ICON_SEARCH, isPreset: false };
         
-        // 存在しなければドロップダウンのリストに追加
         const exists = this.currentLocations.some(l => l.name === decodedName);
         if (!exists) {
           this.currentLocations.push(paramLoc);
