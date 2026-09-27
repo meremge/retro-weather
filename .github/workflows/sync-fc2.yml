@@ -24,6 +24,9 @@ jobs:
             exit 1
           fi
 
+          # FC2の自動挿入広告（<script>...</script>）を除去
+          CLEANED_HTML=$(echo "$HTML_CONTENT" | sed '/<script/,/<\/script>/d')
+
           # 2. ボット用JS (retro-weather-widget-bt.js) の生成
           cat << 'EOF' > retro-weather-widget-bt.js
           (function() {
@@ -36,8 +39,8 @@ jobs:
                 this.shadowRoot.innerHTML = `
           EOF
 
-          # HTMLの中身を流し込む
-          echo "$HTML_CONTENT" >> retro-weather-widget-bt.js
+          # 広告除去後のHTMLの中身を流し込む
+          echo "$CLEANED_HTML" >> retro-weather-widget-bt.js
 
           cat << 'EOF' >> retro-weather-widget-bt.js
                 `;
