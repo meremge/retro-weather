@@ -56,8 +56,1094 @@
     }
 
     render() {
-      // 原本のHTML/CSS構造をそのままShadow DOMに全注入（色・フォント・表示ルールを一切壊さない）
-      this.shadowRoot.innerHTML = "<!DOCTYPE html>\r\n<html lang=\"ja\">\r\n<head>\r\n  <meta charset=\"UTF-8\">\r\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n  <!-- スマホブラウザのアドレスバー・ヘッダー色設定 -->\r\n  <meta name=\"theme-color\" content=\"#1a1a2e\">\r\n  <title>一生死なない！レトロお天気＆気圧ウィジェット</title>\r\n  <link href=\"https://fonts.googleapis.com/css2?family=DotGothic16&display=swap\" rel=\"stylesheet\">\r\n  <style>\r\n    body {\r\n      background-color: #1a1a2e;\r\n      color: #00ffcc;\r\n      font-family: 'DotGothic16', sans-serif;\r\n      display: flex;\r\n      flex-direction: column;\r\n      align-items: center;\r\n      justify-content: flex-start; /* 中央寄せから「上寄せ」に変更 */\r\n      min-height: 100vh;\r\n      margin: 0;\r\n      padding: 20px 10px 30px 10px; /* 上部余白を詰めてスッキリ配置 */\r\n      box-sizing: border-box;\r\n    }\r\n\r\n    /* --- モーダル表示時に背景スクロールを完璧にロック --- */\r\n    body.modal-open {\r\n      overflow: hidden !important;\r\n    }\r\n\r\n    .widget-card {\r\n      border: 4px solid #00ffcc;\r\n      padding: 18px;\r\n      width: 310px;\r\n      background-color: #0f0f1b;\r\n      box-shadow: 6px 6px 0px #ff0055;\r\n      text-align: center;\r\n      border-radius: 4px;\r\n      box-sizing: border-box;\r\n      position: relative;\r\n    }\r\n\r\n    .header-bar {\r\n      display: flex;\r\n      justify-content: space-between;\r\n      align-items: center;\r\n      margin-bottom: 6px;\r\n    }\r\n\r\n    /* --- 共有ボタン (3点共有アイコン) --- */\r\n    .share-btn-img {\r\n      background: transparent;\r\n      border: 2px solid #00ffcc;\r\n      width: 28px;\r\n      height: 28px;\r\n      display: inline-flex;\r\n      align-items: center;\r\n      justify-content: center;\r\n      cursor: pointer;\r\n      padding: 0;\r\n      box-sizing: border-box;\r\n      overflow: hidden;\r\n      flex-shrink: 0;\r\n    }\r\n    .share-btn-img:hover {\r\n      background: #00ffcc;\r\n    }\r\n    .share-btn-img:hover .share-svg-icon {\r\n      fill: #000;\r\n    }\r\n\r\n    /* どこでも崩れないインラインSVGアイコン */\r\n    .share-svg-icon {\r\n      width: 16px;\r\n      height: 16px;\r\n      fill: #00ffcc;\r\n      display: block;\r\n    }\r\n\r\n    .location-controls {\r\n      display: flex;\r\n      gap: 6px;\r\n      margin-bottom: 8px;\r\n      position: relative;\r\n    }\r\n\r\n    /* --- カスタムプルダウン --- */\r\n    .custom-select-wrapper {\r\n      flex-grow: 1;\r\n      position: relative;\r\n      text-align: left;\r\n    }\r\n\r\n    .custom-select-trigger {\r\n      background: #0f0f1b;\r\n      color: #00ffcc;\r\n      border: 2px solid #00ffcc;\r\n      padding: 5px 8px;\r\n      font-size: 13px;\r\n      cursor: pointer;\r\n      display: flex;\r\n      align-items: center;\r\n      justify-content: space-between;\r\n      white-space: nowrap;\r\n      overflow: hidden;\r\n      text-overflow: ellipsis;\r\n    }\r\n\r\n    .custom-options {\r\n      display: none;\r\n      position: absolute;\r\n      top: 100%;\r\n      left: 0;\r\n      right: 0;\r\n      background: #0f0f1b;\r\n      border: 2px solid #00ffcc;\r\n      border-top: none;\r\n      z-index: 100;\r\n      max-height: 180px;\r\n      overflow-y: auto;\r\n      box-shadow: 4px 4px 0px #000;\r\n    }\r\n\r\n    .custom-options.open {\r\n      display: block;\r\n    }\r\n\r\n    .custom-option {\r\n      padding: 6px 8px;\r\n      font-size: 13px;\r\n      cursor: pointer;\r\n      display: flex;\r\n      align-items: center;\r\n      justify-content: space-between;\r\n      border-bottom: 1px dashed #1a3a4b;\r\n    }\r\n\r\n    .custom-option:hover {\r\n      background: #1a2a3a;\r\n      color: #ffff00;\r\n    }\r\n\r\n    .option-label {\r\n      display: flex;\r\n      align-items: center;\r\n      gap: 6px;\r\n      overflow: hidden;\r\n      text-overflow: ellipsis;\r\n      white-space: nowrap;\r\n    }\r\n\r\n    .delete-item-btn {\r\n      color: #ff0055;\r\n      border: 1px solid #ff0055;\r\n      background: transparent;\r\n      cursor: pointer;\r\n      width: 20px;\r\n      height: 20px;\r\n      display: inline-flex;\r\n      align-items: center;\r\n      justify-content: center;\r\n      font-size: 12px;\r\n      line-height: 1;\r\n      padding: 0;\r\n      box-sizing: border-box;\r\n      flex-shrink: 0;\r\n    }\r\n    .delete-item-btn:hover {\r\n      background: #ff0055;\r\n      color: #fff;\r\n    }\r\n\r\n    /* --- 検索入力欄 ＆ クリア（×）ボタン --- */\r\n    .search-box {\r\n      display: flex;\r\n      gap: 4px;\r\n      margin-bottom: 12px;\r\n    }\r\n\r\n    .input-wrapper {\r\n      position: relative;\r\n      flex-grow: 1;\r\n      display: flex;\r\n      align-items: center;\r\n    }\r\n\r\n    .input-wrapper input {\r\n      width: 100%;\r\n      padding-right: 22px;\r\n      box-sizing: border-box;\r\n    }\r\n\r\n    .clear-input-btn {\r\n      position: absolute;\r\n      right: 4px;\r\n      background: transparent;\r\n      border: none;\r\n      color: #ff0055;\r\n      font-size: 14px;\r\n      cursor: pointer;\r\n      padding: 0 4px;\r\n      display: none;\r\n      line-height: 1;\r\n    }\r\n    .clear-input-btn:hover {\r\n      color: #ffff00;\r\n    }\r\n\r\n    input, button {\r\n      background: #0f0f1b;\r\n      color: #00ffcc;\r\n      border: 2px solid #00ffcc;\r\n      padding: 5px;\r\n      font-family: inherit;\r\n      cursor: pointer;\r\n      font-size: 13px;\r\n    }\r\n\r\n    input {\r\n      color: #ffff00;\r\n      cursor: text;\r\n    }\r\n\r\n    button:hover { background: #00ffcc; color: #000; }\r\n\r\n    .weather-display { margin: 10px 0; }\r\n\r\n    .weather-icon-box {\r\n      height: 70px;\r\n      display: flex;\r\n      align-items: center;\r\n      justify-content: center;\r\n      margin-bottom: 5px;\r\n    }\r\n\r\n    .pixel-icon {\r\n      image-rendering: pixelated;\r\n      image-rendering: crisp-edges;\r\n    }\r\n\r\n    .weather-icon-box img {\r\n      width: 64px;\r\n      height: 64px;\r\n    }\r\n\r\n    .loading-icon {\r\n      width: 48px;\r\n      height: 48px;\r\n    }\r\n\r\n    .status-icon {\r\n      width: 18px;\r\n      height: 18px;\r\n      vertical-align: middle;\r\n      margin-right: 4px;\r\n    }\r\n\r\n    .detail-icon, .option-icon, .btn-icon {\r\n      width: 16px;\r\n      height: 16px;\r\n      vertical-align: middle;\r\n    }\r\n\r\n    .temp-display {\r\n      font-size: 28px;\r\n      color: #ffff00;\r\n      margin: 2px 0;\r\n    }\r\n\r\n    .barometer-box {\r\n      margin-top: 12px;\r\n      padding: 8px;\r\n      border: 2px dashed #ff0055;\r\n      background-color: #2a081d;\r\n    }\r\n\r\n    .alert-container {\r\n      display: flex;\r\n      align-items: center;\r\n      justify-content: center;\r\n      margin-top: 5px;\r\n      font-size: 13px;\r\n      line-height: 1.3;\r\n    }\r\n\r\n    .details {\r\n      font-size: 13px;\r\n      margin-top: 10px;\r\n      color: #888ff0;\r\n      text-align: left;\r\n      line-height: 1.8;\r\n    }\r\n\r\n    .detail-item {\r\n      display: flex;\r\n      align-items: center;\r\n      gap: 6px;\r\n    }\r\n\r\n    /* --- 埋め込みコードボタン --- */\r\n    .embed-footer {\r\n      margin-top: 14px;\r\n      padding-top: 10px;\r\n      border-top: 1px dashed #1a3a4b;\r\n    }\r\n    .embed-btn-square {\r\n      width: 100%;\r\n      background: #0f0f1b;\r\n      color: #888ff0;\r\n      border: 2px solid #888ff0;\r\n      padding: 6px;\r\n      font-size: 12px;\r\n      cursor: pointer;\r\n      transition: all 0.1s ease;\r\n      display: flex;\r\n      align-items: center;\r\n      justify-content: center;\r\n      gap: 6px;\r\n    }\r\n    .embed-btn-square:hover {\r\n      background: #888ff0;\r\n      color: #000;\r\n    }\r\n\r\n    /* --- モーダルダイアログ --- */\r\n    .modal-overlay {\r\n      display: none;\r\n      position: fixed;\r\n      top: 0;\r\n      left: 0;\r\n      width: 100%;\r\n      height: 100%;\r\n      background: rgba(0, 0, 0, 0.85);\r\n      z-index: 1000;\r\n      align-items: center;\r\n      justify-content: center;\r\n      padding: 15px;\r\n      box-sizing: border-box;\r\n    }\r\n    .modal-card {\r\n      background: #0f0f1b;\r\n      border: 3px solid #00ffcc;\r\n      box-shadow: 6px 6px 0px #ff0055;\r\n      padding: 16px;\r\n      max-width: 340px;\r\n      width: 100%;\r\n      text-align: left;\r\n      border-radius: 4px;\r\n      box-sizing: border-box;\r\n    }\r\n    .modal-title {\r\n      color: #ffff00;\r\n      font-size: 14px;\r\n      margin-top: 0;\r\n      margin-bottom: 10px;\r\n      border-bottom: 2px dashed #00ffcc;\r\n      padding-bottom: 4px;\r\n      display: flex;\r\n      align-items: center;\r\n      gap: 6px;\r\n    }\r\n    .modal-desc {\r\n      font-size: 11px;\r\n      color: #00ffcc;\r\n      line-height: 1.5;\r\n      margin-bottom: 8px;\r\n    }\r\n    .modal-notice {\r\n      font-size: 11px;\r\n      color: #ff88a3;\r\n      line-height: 1.4;\r\n      margin-bottom: 10px;\r\n      background: #2a081d;\r\n      padding: 6px;\r\n      border: 1px dashed #ff0055;\r\n    }\r\n    .code-textarea {\r\n      width: 100%;\r\n      height: 60px;\r\n      background: #1a1a2e;\r\n      color: #ffff00;\r\n      border: 1px solid #00ffcc;\r\n      font-family: monospace;\r\n      font-size: 11px;\r\n      padding: 6px;\r\n      box-sizing: border-box;\r\n      resize: none;\r\n      margin-bottom: 10px;\r\n    }\r\n    .modal-actions {\r\n      display: flex;\r\n      gap: 6px;\r\n      justify-content: flex-end;\r\n    }\r\n    .modal-actions button {\r\n      font-size: 11px;\r\n      padding: 5px 8px;\r\n      display: flex;\r\n      align-items: center;\r\n      gap: 4px;\r\n    }\r\n    .modal-actions button:hover .share-svg-icon {\r\n      fill: #000;\r\n    }\r\n  </style>\r\n</head>\r\n<body>\r\n\r\n  <div class=\"widget-card\">\r\n    <div class=\"header-bar\">\r\n      <span style=\"font-size: 11px; color: #ff0055;\">[ RETRO_WEATHER_v3.3 ]</span>\r\n      <button id=\"shareBtn\" class=\"share-btn-img\" title=\"お天気メモとして保存・共有\">\r\n        <svg class=\"share-svg-icon\" viewBox=\"0 0 24 24\">\r\n          <path d=\"M18 16.08c-.76 0-1.44.3-1.96.77l-7.13-4.15c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z\"/>\r\n        </svg>\r\n      </button>\r\n    </div>\r\n    \r\n    <!-- プルダウン ＆ GPSボタン -->\r\n    <div class=\"location-controls\">\r\n      <div class=\"custom-select-wrapper\">\r\n        <div id=\"selectTrigger\" class=\"custom-select-trigger\">\r\n          <span id=\"selectedText\">選択中...</span>\r\n          <span>▼</span>\r\n        </div>\r\n        <div id=\"selectOptions\" class=\"custom-options\"></div>\r\n      </div>\r\n      <button id=\"gpsBtn\" title=\"GPSで現在地を取得\">GPS</button>\r\n    </div>\r\n\r\n    <!-- 検索 ＆ クリア（×）ボタン -->\r\n    <div class=\"search-box\">\r\n      <div class=\"input-wrapper\">\r\n        <input type=\"text\" id=\"searchInput\" placeholder=\"例: 東京タワー, 秩父, 飯能\">\r\n        <button id=\"clearInputBtn\" class=\"clear-input-btn\" title=\"入力内容をクリア\">×</button>\r\n      </div>\r\n      <button id=\"searchBtn\">追加</button>\r\n    </div>\r\n\r\n    <!-- メイン表示 -->\r\n    <div class=\"weather-display\">\r\n      <div id=\"displayLocationName\" style=\"font-size: 13px; color: #ffff00; margin-bottom: 4px;\">---</div>\r\n      <div class=\"weather-icon-box\">\r\n        <img id=\"weatherImg\" class=\"pixel-icon\" src=\"\" alt=\"天気\" style=\"display:none;\">\r\n        <img id=\"loadingImg\" class=\"pixel-icon loading-icon\" src=\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/23f3.png\" alt=\"読み込み中\">\r\n      </div>\r\n      <div id=\"weatherTelop\" style=\"font-size: 17px;\">データ取得中...</div>\r\n      <div id=\"tempDisplay\" class=\"temp-display\">-- ℃</div>\r\n    </div>\r\n\r\n    <!-- 気圧アラート -->\r\n    <div class=\"barometer-box\">\r\n      <div>現地気圧: <span id=\"pressureDisplay\">--</span> hPa</div>\r\n      <div class=\"alert-container\">\r\n        <img id=\"pressureIcon\" class=\"pixel-icon status-icon\" src=\"\" alt=\"気圧状態\" style=\"display:none;\">\r\n        <span id=\"pressureAlert\">チェック中...</span>\r\n      </div>\r\n    </div>\r\n\r\n    <!-- 詳細 -->\r\n    <div class=\"details\">\r\n      <div class=\"detail-item\">\r\n        <img class=\"pixel-icon detail-icon\" src=\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4a8.png\" alt=\"風\">\r\n        風速: <span id=\"windSpeed\">--</span> m/s\r\n      </div>\r\n      <div class=\"detail-item\">\r\n        <img class=\"pixel-icon detail-icon\" src=\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f506.png\" alt=\"UV\">\r\n        UV指数: <span id=\"uvIndex\">--</span>\r\n      </div>\r\n      <div class=\"detail-item\">\r\n        <img class=\"pixel-icon detail-icon\" src=\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f332.png\" alt=\"花粉\">\r\n        スギ花粉: <span id=\"pollenIndex\">--</span>\r\n      </div>\r\n    </div>\r\n\r\n    <!-- 埋め込みコードボタン -->\r\n    <div class=\"embed-footer\">\r\n      <button id=\"openEmbedModal\" class=\"embed-btn-square\">\r\n        <img class=\"pixel-icon btn-icon\" src=\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2699.png\" alt=\"設定\">\r\n        埋め込みコードを取得\r\n      </button>\r\n    </div>\r\n  </div>\r\n\r\n  <!-- 位置情報利用確認・GPSオフ警告モーダル (v3.0.6完全スタイル統合) -->\r\n  <div id=\"initLocationModal\" class=\"modal-overlay\">\r\n    <div class=\"modal-card\">\r\n      <h3 class=\"modal-title\">\r\n        <img class=\"pixel-icon btn-icon\" src=\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png\" alt=\"GPS\">\r\n        位置情報の利用確認\r\n      </h3>\r\n      <div id=\"initModalDesc\" class=\"modal-desc\">\r\n        現在地のリアルタイムなお天気を取得しますか？<br>\r\n        ※端末のGPS機能をオンにしてご利用ください。\r\n      </div>\r\n      <div id=\"initModalNotice\" class=\"modal-notice\" style=\"display: none;\">\r\n        ⚠️ GPSがオフか許可されていません。<br>端末の設定でGPSをオンにしてから再試行してください。\r\n      </div>\r\n      <div class=\"modal-actions\">\r\n        <button id=\"initGpsBtn\">\r\n          <img class=\"pixel-icon btn-icon\" src=\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png\" alt=\"ピン\">\r\n          <span id=\"initGpsBtnText\">現在地を取得</span>\r\n        </button>\r\n        <button id=\"initCancelBtn\" style=\"border-color: #ff0055; color: #ff0055;\">デフォルト (東京)</button>\r\n      </div>\r\n    </div>\r\n  </div>\r\n\r\n  <!-- 埋め込みパーツ モーダル画面 -->\r\n  <div id=\"embedModal\" class=\"modal-overlay\">\r\n    <div class=\"modal-card\">\r\n      <h3 class=\"modal-title\">\r\n        <img class=\"pixel-icon btn-icon\" src=\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f47e.png\" alt=\"インベーダー\">\r\n        お天気埋め込みパーツ\r\n      </h3>\r\n      <div class=\"modal-desc\">\r\n        ご自身のブログやホームページ（WordPress、はてなブログ、Note、自作HPなど）に貼り付けると、選択中の場所のリアルタイムお天気を表示できます（※昔でいう「ブログパーツ」機能です）。\r\n      </div>\r\n      <div class=\"modal-notice\">\r\n        ※HTML（iframe）対応のサイトでご利用いただけます。テキスト専用のSNS等では表示できません。<br>\r\n        ※埋め込み表示内から詳細を操作した場合、本家アプリページが開きます。\r\n      </div>\r\n      <textarea id=\"embedCodeText\" class=\"code-textarea\" readonly></textarea>\r\n      <div class=\"modal-actions\">\r\n        <button id=\"copyEmbedBtn\">\r\n          <img class=\"pixel-icon btn-icon\" src=\"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cb.png\" alt=\"クリップボード\">\r\n          コードコピー\r\n        </button>\r\n        <button id=\"shareEmbedBtn\">\r\n          <svg class=\"share-svg-icon\" viewBox=\"0 0 24 24\">\r\n            <path d=\"M18 16.08c-.76 0-1.44.3-1.96.77l-7.13-4.15c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z\"/>\r\n          </svg>\r\n          アプリで共有\r\n        </button>\r\n        <button id=\"closeEmbedModal\" style=\"border-color: #ff0055; color: #ff0055;\">閉じる</button>\r\n      </div>\r\n    </div>\r\n  </div>\r\n\r\n  <script>\r\n    const ICON_GPS = \"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png\"; // 📡 GPS\r\n    const ICON_PIN = \"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png\"; // 📍 ピン\r\n    const ICON_SEARCH = \"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f50d.png\"; // 🔍 検索\r\n    const STORAGE_KEY = 'retro_weather_custom_cities';\r\n    const VISITED_KEY = 'retro_weather_visited';\r\n    const GPS_ALLOWED_KEY = 'retro_weather_gps_allowed';\r\n\r\n    const defaultPresets = [\r\n      { name: \"現在地\", lat: 35.6895, lon: 139.6917, jmaFile: \"130000\", areaName: \"東京地方\", icon: ICON_GPS, isPreset: true, subName: \"\" },\r\n      { name: \"所沢\", lat: 35.7994, lon: 139.4692, jmaFile: \"110000\", areaName: \"南部\", icon: ICON_PIN, isPreset: true },\r\n      { name: \"東京\", lat: 35.6895, lon: 139.6917, jmaFile: \"130000\", areaName: \"東京地方\", icon: ICON_PIN, isPreset: true },\r\n      { name: \"大阪\", lat: 34.6937, lon: 135.5023, jmaFile: \"270000\", areaName: \"大阪府\", icon: ICON_PIN, isPreset: true },\r\n      { name: \"札幌\", lat: 43.0621, lon: 141.3544, jmaFile: \"016000\", areaName: \"石狩地方\", icon: ICON_PIN, isPreset: true }\r\n    ];\r\n\r\n    let currentLocations = [...defaultPresets];\r\n    let selectedLocation = defaultPresets[2]; // 東京をデフォルト表示場所にする\r\n\r\n    let currentFetchedData = {\r\n      weather: \"--\",\r\n      temp: \"--\",\r\n      pressure: \"--\",\r\n      wind: \"--\",\r\n      uv: \"--\",\r\n      pollen: \"--\"\r\n    };\r\n\r\n    const selectTrigger = document.getElementById('selectTrigger');\r\n    const selectOptions = document.getElementById('selectOptions');\r\n    const selectedText = document.getElementById('selectedText');\r\n    const gpsBtn = document.getElementById('gpsBtn');\r\n    const searchBtn = document.getElementById('searchBtn');\r\n    const searchInput = document.getElementById('searchInput');\r\n    const clearInputBtn = document.getElementById('clearInputBtn');\r\n    const shareBtn = document.getElementById('shareBtn');\r\n\r\n    const openEmbedModal = document.getElementById('openEmbedModal');\r\n    const closeEmbedModal = document.getElementById('closeEmbedModal');\r\n    const embedModal = document.getElementById('embedModal');\r\n    const embedCodeText = document.getElementById('embedCodeText');\r\n    const copyEmbedBtn = document.getElementById('copyEmbedBtn');\r\n    const shareEmbedBtn = document.getElementById('shareEmbedBtn');\r\n\r\n    const initLocationModal = document.getElementById('initLocationModal');\r\n    const initGpsBtn = document.getElementById('initGpsBtn');\r\n    const initGpsBtnText = document.getElementById('initGpsBtnText');\r\n    const initCancelBtn = document.getElementById('initCancelBtn');\r\n    const initModalNotice = document.getElementById('initModalNotice');\r\n\r\n    window.addEventListener('DOMContentLoaded', () => {\r\n      loadSavedLocations();\r\n      checkUrlParams();\r\n      renderCustomSelect();\r\n\r\n      const hasVisited = localStorage.getItem(VISITED_KEY);\r\n      const isGpsAllowed = localStorage.getItem(GPS_ALLOWED_KEY) === 'true';\r\n\r\n      if (!hasVisited || !isGpsAllowed) {\r\n        openInitModal();\r\n        fetchWeatherData(selectedLocation);\r\n      } else {\r\n        executeGpsFetch(false);\r\n      }\r\n    });\r\n\r\n    function openInitModal() {\r\n      initLocationModal.style.display = 'flex';\r\n      document.body.classList.add('modal-open');\r\n    }\r\n\r\n    function closeInitModal() {\r\n      initLocationModal.style.display = 'none';\r\n      document.body.classList.remove('modal-open');\r\n    }\r\n\r\n    initGpsBtn.addEventListener('click', () => {\r\n      executeGpsFetch(true);\r\n    });\r\n\r\n    initCancelBtn.addEventListener('click', () => {\r\n      localStorage.setItem(VISITED_KEY, 'true');\r\n      localStorage.setItem(GPS_ALLOWED_KEY, 'false');\r\n      closeInitModal();\r\n      fetchWeatherData(selectedLocation);\r\n    });\r\n\r\n    searchInput.addEventListener('input', () => {\r\n      clearInputBtn.style.display = searchInput.value ? 'block' : 'none';\r\n    });\r\n\r\n    clearInputBtn.addEventListener('click', () => {\r\n      searchInput.value = '';\r\n      clearInputBtn.style.display = 'none';\r\n      searchInput.focus();\r\n    });\r\n\r\n    selectTrigger.addEventListener('click', (e) => {\r\n      e.stopPropagation();\r\n      selectOptions.classList.toggle('open');\r\n    });\r\n\r\n    document.addEventListener('click', () => selectOptions.classList.remove('open'));\r\n\r\n    function renderCustomSelect() {\r\n      selectOptions.innerHTML = '';\r\n\r\n      selectedText.innerHTML = `\r\n        <span class=\"option-label\">\r\n          <img class=\"pixel-icon option-icon\" src=\"${selectedLocation.icon}\">\r\n          ${selectedLocation.name}\r\n        </span>\r\n      `;\r\n\r\n      currentLocations.forEach((loc, index) => {\r\n        const optionDiv = document.createElement('div');\r\n        optionDiv.className = 'custom-option';\r\n\r\n        const labelDiv = document.createElement('div');\r\n        labelDiv.className = 'option-label';\r\n        labelDiv.innerHTML = `<img class=\"pixel-icon option-icon\" src=\"${loc.icon}\"> ${loc.name}`;\r\n        \r\n        optionDiv.appendChild(labelDiv);\r\n\r\n        if (!loc.isPreset) {\r\n          const delBtn = document.createElement('button');\r\n          delBtn.className = 'delete-item-btn';\r\n          delBtn.innerText = '×';\r\n          delBtn.title = '削除';\r\n          delBtn.addEventListener('click', (e) => {\r\n            e.stopPropagation();\r\n            deleteLocation(index);\r\n          });\r\n          optionDiv.appendChild(delBtn);\r\n        }\r\n\r\n        optionDiv.addEventListener('click', () => {\r\n          selectedLocation = loc;\r\n          renderCustomSelect();\r\n          selectOptions.classList.remove('open');\r\n          fetchWeatherData(selectedLocation);\r\n        });\r\n\r\n        selectOptions.appendChild(optionDiv);\r\n      });\r\n    }\r\n\r\n    function deleteLocation(index) {\r\n      const target = currentLocations[index];\r\n      currentLocations.splice(index, 1);\r\n      \r\n      const savedOnly = currentLocations.filter(l => !l.isPreset);\r\n      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedOnly));\r\n\r\n      if (selectedLocation.name === target.name) {\r\n        selectedLocation = currentLocations[0];\r\n      }\r\n\r\n      renderCustomSelect();\r\n      fetchWeatherData(selectedLocation);\r\n    }\r\n\r\n    function checkUrlParams() {\r\n      const params = new URLSearchParams(window.location.search);\r\n      const lat = parseFloat(params.get('lat'));\r\n      const lon = parseFloat(params.get('lon'));\r\n      const name = params.get('name');\r\n\r\n      if (lat && lon && name) {\r\n        const decodedName = decodeURIComponent(name);\r\n        \r\n        const paramLoc = {\r\n          name: decodedName,\r\n          lat: lat,\r\n          lon: lon,\r\n          jmaFile: \"130000\",\r\n          areaName: \"東京地方\",\r\n          icon: ICON_SEARCH,\r\n          isPreset: false\r\n        };\r\n\r\n        selectedLocation = paramLoc;\r\n        searchInput.value = decodedName;\r\n        clearInputBtn.style.display = 'block';\r\n      }\r\n    }\r\n\r\n    function getFormattedDateTime() {\r\n      const now = new Date();\r\n      const year = now.getFullYear();\r\n      const month = now.getMonth() + 1;\r\n      const date = now.getDate();\r\n      const dayList = ['日', '月', '火', '水', '木', '金', '土'];\r\n      const day = dayList[now.getDay()];\r\n      const hours = String(now.getHours()).padStart(2, '0');\r\n      const minutes = String(now.getMinutes()).padStart(2, '0');\r\n\r\n      return `${year}年${month}月${date}日（${day}）${hours}:${minutes}`;\r\n    }\r\n\r\n    /* --- Web Share API 共有処理 --- */\r\n    shareBtn.addEventListener('click', async () => {\r\n      const baseUrl = window.location.origin + window.location.pathname;\r\n\r\n      let shareName = selectedLocation.name;\r\n      if (selectedLocation.name === \"現在地\" && selectedLocation.subName) {\r\n        shareName = selectedLocation.subName;\r\n      }\r\n\r\n      const shareUrl = `${baseUrl}?lat=${selectedLocation.lat}&lon=${selectedLocation.lon}&name=${encodeURIComponent(shareName)}`;\r\n      const timeStr = getFormattedDateTime();\r\n\r\n      const shareText = \r\n`【お天気メモ日記】\r\n--------------------\r\n📅 日時: ${timeStr}\r\n📍 場所: ${shareName}\r\n\r\n🌤️ 天気: ${currentFetchedData.weather}\r\n🌡️ 気温: ${currentFetchedData.temp} ℃\r\n🎈 気圧: ${currentFetchedData.pressure} hPa\r\n💨 風速: ${currentFetchedData.wind} m/s\r\n☀️ UV指数: ${currentFetchedData.uv}\r\n🌲 スギ花粉: ${currentFetchedData.pollen}\r\n--------------------\r\n🔗 今日のリアルタイムお天気リンク:\r\n${shareUrl}`;\r\n\r\n      if (navigator.share) {\r\n        try {\r\n          await navigator.share({\r\n            title: `${shareName}のお天気メモ`,\r\n            text: shareText\r\n          });\r\n        } catch (err) {\r\n          console.log('共有キャンセル:', err);\r\n        }\r\n      } else {\r\n        try {\r\n          await navigator.clipboard.writeText(shareText);\r\n          alert(`お天気メモをコピーしました！\\n\\n${shareText}`);\r\n        } catch (err) {\r\n          prompt('以下のテキストをコピーしてください:', shareText);\r\n        }\r\n      }\r\n    });\r\n\r\n    /* --- モーダル制御 --- */\r\n    openEmbedModal.addEventListener('click', () => {\r\n      const baseUrl = window.location.origin + window.location.pathname;\r\n      let shareName = selectedLocation.name;\r\n      if (selectedLocation.name === \"現在地\" && selectedLocation.subName) {\r\n        shareName = selectedLocation.subName;\r\n      }\r\n      const targetUrl = `${baseUrl}?lat=${selectedLocation.lat}&lon=${selectedLocation.lon}&name=${encodeURIComponent(shareName)}`;\r\n      \r\n      const iframeCode = `<iframe src=\"${targetUrl}\" width=\"330\" height=\"520\" frameborder=\"0\" style=\"border:none; overflow:hidden;\" scrolling=\"no\"></iframe>`;\r\n      embedCodeText.value = iframeCode;\r\n      \r\n      embedModal.style.display = 'flex';\r\n      document.body.classList.add('modal-open');\r\n    });\r\n\r\n    function closeModal() {\r\n      embedModal.style.display = 'none';\r\n      document.body.classList.remove('modal-open');\r\n    }\r\n\r\n    closeEmbedModal.addEventListener('click', closeModal);\r\n\r\n    embedModal.addEventListener('click', (e) => {\r\n      if (e.target === embedModal) closeModal();\r\n    });\r\n\r\n    copyEmbedBtn.addEventListener('click', async () => {\r\n      try {\r\n        await navigator.clipboard.writeText(embedCodeText.value);\r\n        alert('埋め込みコードをコピーしました！');\r\n      } catch (e) {\r\n        embedCodeText.select();\r\n        document.execCommand('copy');\r\n        alert('コードをコピーしました！');\r\n      }\r\n    });\r\n\r\n    shareEmbedBtn.addEventListener('click', async () => {\r\n      let shareName = selectedLocation.name;\r\n      if (selectedLocation.name === \"現在地\" && selectedLocation.subName) {\r\n        shareName = selectedLocation.subName;\r\n      }\r\n      const shareText = `【${shareName}の埋め込みコード】\\n\\n${embedCodeText.value}`;\r\n\r\n      if (navigator.share) {\r\n        try {\r\n          await navigator.share({\r\n            title: `${shareName}の埋め込みコード`,\r\n            text: shareText\r\n          });\r\n        } catch (err) {\r\n          console.log('共有キャンセル:', err);\r\n        }\r\n      } else {\r\n        try {\r\n          await navigator.clipboard.writeText(shareText);\r\n          alert(`埋め込みコードをコピーしました！\\n\\n${shareText}`);\r\n        } catch (err) {\r\n          prompt('以下のテキストをコピーしてください:', shareText);\r\n        }\r\n      }\r\n    });\r\n\r\n    function loadSavedLocations() {\r\n      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');\r\n      saved.forEach(loc => {\r\n        loc.icon = ICON_SEARCH;\r\n        currentLocations.push(loc);\r\n      });\r\n    }\r\n\r\n    function addLocationToList(newLoc) {\r\n      const exists = currentLocations.some(l => l.name === newLoc.name);\r\n      if (!exists) {\r\n        currentLocations.push(newLoc);\r\n        const savedOnly = currentLocations.filter(l => !l.isPreset);\r\n        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedOnly));\r\n      }\r\n    }\r\n\r\n    searchBtn.addEventListener('click', async () => {\r\n      const query = searchInput.value.trim();\r\n      if (!query) return;\r\n\r\n      document.getElementById('weatherTelop').innerText = '検索中...';\r\n\r\n      try {\r\n        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=ja&format=json`;\r\n        let res = await fetch(geoUrl).then(r => r.json());\r\n        let place = res.results?.find(p => p.country_code === 'JP') || res.results?.[0];\r\n\r\n        if (!place) {\r\n          const osmUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' 日本')}&limit=1`;\r\n          const osmRes = await fetch(osmUrl).then(r => r.json());\r\n          if (osmRes && osmRes.length > 0) {\r\n            place = { name: query, latitude: parseFloat(osmRes[0].lat), longitude: parseFloat(osmRes[0].lon) };\r\n          }\r\n        }\r\n\r\n        if (!place) {\r\n          alert('該当する場所が見つかりませんでした');\r\n          document.getElementById('weatherTelop').innerText = '検索失敗';\r\n          return;\r\n        }\r\n\r\n        const newLoc = {\r\n          name: query,\r\n          lat: place.latitude,\r\n          lon: place.longitude,\r\n          jmaFile: \"130000\",\r\n          areaName: \"東京地方\",\r\n          icon: ICON_SEARCH,\r\n          isPreset: false\r\n        };\r\n\r\n        addLocationToList(newLoc);\r\n        selectedLocation = newLoc;\r\n        renderCustomSelect();\r\n        fetchWeatherData(selectedLocation);\r\n\r\n      } catch (err) {\r\n        console.error(err);\r\n        alert('検索エラーが発生しました');\r\n      }\r\n    });\r\n\r\n    async function reverseGeocode(lat, lon) {\r\n      try {\r\n        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=12&accept-language=ja`).then(r => r.json());\r\n        if (res && res.address) {\r\n          return res.address.city || res.address.town || res.address.village || res.address.suburb || res.address.county || \"\";\r\n        }\r\n      } catch (e) {\r\n        console.error('逆ジオコーディングエラー:', e);\r\n      }\r\n      return \"\";\r\n    }\r\n\r\n    gpsBtn.addEventListener('click', () => {\r\n      executeGpsFetch(true);\r\n    });\r\n\r\n    function executeGpsFetch(isInteractive = false) {\r\n      if (!navigator.geolocation) {\r\n        handleGpsError();\r\n        return;\r\n      }\r\n\r\n      document.getElementById('weatherTelop').innerText = '現在地を取得中...';\r\n\r\n      const gpsTimeout = setTimeout(() => {\r\n        handleGpsError();\r\n      }, 5000);\r\n\r\n      navigator.geolocation.getCurrentPosition(async position => {\r\n        clearTimeout(gpsTimeout);\r\n        const lat = position.coords.latitude;\r\n        const lon = position.coords.longitude;\r\n        \r\n        localStorage.setItem(VISITED_KEY, 'true');\r\n        localStorage.setItem(GPS_ALLOWED_KEY, 'true');\r\n        closeInitModal();\r\n\r\n        const detectedCity = await reverseGeocode(lat, lon);\r\n\r\n        if (detectedCity) {\r\n          searchInput.value = detectedCity;\r\n          clearInputBtn.style.display = 'block';\r\n        }\r\n\r\n        const gpsLoc = {\r\n          name: \"現在地\",\r\n          subName: detectedCity,\r\n          lat: lat,\r\n          lon: lon,\r\n          jmaFile: \"130000\",\r\n          areaName: \"東京地方\",\r\n          icon: ICON_GPS,\r\n          isPreset: true\r\n        };\r\n\r\n        currentLocations[0] = gpsLoc;\r\n        selectedLocation = gpsLoc;\r\n        renderCustomSelect();\r\n        fetchWeatherData(selectedLocation);\r\n      }, (error) => {\r\n        clearTimeout(gpsTimeout);\r\n        handleGpsError();\r\n      }, { timeout: 5000, enableHighAccuracy: true });\r\n    }\r\n\r\n    function handleGpsError() {\r\n      localStorage.setItem(VISITED_KEY, 'true');\r\n      localStorage.setItem(GPS_ALLOWED_KEY, 'false');\r\n      \r\n      openInitModal();\r\n      initModalNotice.style.display = 'block';\r\n      initGpsBtnText.innerText = 'オンにしたので再試行';\r\n      \r\n      fetchWeatherData(selectedLocation);\r\n    }\r\n\r\n    async function fetchWeatherData(locationData) {\r\n      document.getElementById('loadingImg').style.display = 'inline';\r\n      document.getElementById('weatherImg').style.display = 'none';\r\n      document.getElementById('weatherTelop').innerText = '通信中...';\r\n\r\n      let displayName = `[ ${locationData.name} ]`;\r\n      if (locationData.name === \"現在地\" && locationData.subName) {\r\n        displayName = `[ 現在地 : ${locationData.subName} ]`;\r\n      }\r\n      document.getElementById('displayLocationName').innerText = displayName;\r\n\r\n      try {\r\n        const jmaUrl = `https://www.jma.go.jp/bosai/forecast/data/forecast/${locationData.jmaFile}.json`;\r\n        const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${locationData.lat}&longitude=${locationData.lon}&current=temperature_2m,wind_speed_10m,uv_index,surface_pressure&timezone=Asia%2FTokyo`;\r\n        const pollenUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${locationData.lat}&longitude=${locationData.lon}&current=birch_pollen&timezone=Asia%2FTokyo`;\r\n\r\n        const [jmaRes, openMeteoRes, pollenRes] = await Promise.all([\r\n          fetch(jmaUrl).then(r => r.json()).catch(() => null),\r\n          fetch(openMeteoUrl).then(r => r.json()),\r\n          fetch(pollenUrl).then(r => r.json()).catch(() => null)\r\n        ]);\r\n\r\n        let jmaWeatherTelop = \"晴れ/曇り\";\r\n        if (jmaRes && jmaRes[0]?.timeSeries[0]?.areas) {\r\n          const areas = jmaRes[0].timeSeries[0].areas;\r\n          const targetArea = areas.find(a => a.area.name.includes(locationData.areaName)) || areas[0];\r\n          jmaWeatherTelop = targetArea.weathers[0];\r\n        }\r\n\r\n        const currentTemp = openMeteoRes.current.temperature_2m;\r\n        const windSpeed = openMeteoRes.current.wind_speed_10m;\r\n        const uvIndex = openMeteoRes.current.uv_index;\r\n        const pressure = openMeteoRes.current.surface_pressure;\r\n        const birchPollen = pollenRes?.current?.birch_pollen ?? 0;\r\n        const pollenText = birchPollen > 0 ? `${birchPollen} (飛散中)` : '少ない/無';\r\n\r\n        document.getElementById('weatherTelop').innerText = jmaWeatherTelop;\r\n        document.getElementById('tempDisplay').innerText = `${currentTemp} ℃`;\r\n        document.getElementById('windSpeed').innerText = windSpeed;\r\n        document.getElementById('uvIndex').innerText = uvIndex;\r\n        document.getElementById('pressureDisplay').innerText = pressure;\r\n        document.getElementById('pollenIndex').innerText = pollenText;\r\n\r\n        currentFetchedData = {\r\n          weather: jmaWeatherTelop,\r\n          temp: currentTemp,\r\n          pressure: pressure,\r\n          wind: windSpeed,\r\n          uv: uvIndex,\r\n          pollen: pollenText\r\n        };\r\n\r\n        evaluatePressure(pressure);\r\n\r\n        const imgEl = document.getElementById('weatherImg');\r\n        imgEl.src = getPixelIconUrl(jmaWeatherTelop);\r\n        imgEl.style.display = 'inline';\r\n        document.getElementById('loadingImg').style.display = 'none';\r\n\r\n      } catch (error) {\r\n        console.error('Fetch Error:', error);\r\n        document.getElementById('weatherTelop').innerText = 'データ取得失敗';\r\n      }\r\n    }\r\n\r\n    function evaluatePressure(pressure) {\r\n      const alertEl = document.getElementById('pressureAlert');\r\n      const iconEl = document.getElementById('pressureIcon');\r\n      iconEl.style.display = 'inline-block';\r\n\r\n      if (pressure < 1005) {\r\n        alertEl.innerText = '低気圧警戒！無理せず休もう';\r\n        alertEl.style.color = '#ff3366';\r\n        iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a0.png';\r\n      } else if (pressure < 1010) {\r\n        alertEl.innerText = 'やや低気圧：頭痛・倦怠感注意';\r\n        alertEl.style.color = '#ff9900';\r\n        iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a1.png';\r\n      } else {\r\n        alertEl.innerText = '気圧安定：快適コンディション';\r\n        alertEl.style.color = '#00ffcc';\r\n        iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2728.png';\r\n      }\r\n    }\r\n\r\n    function getPixelIconUrl(telop) {\r\n      if (telop.includes('晴')) {\r\n        return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2600.png';\r\n      } else if (telop.includes('雨')) {\r\n        return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f327.png';\r\n      } else if (telop.includes('くもり') || telop.includes('曇')) {\r\n        return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2601.png';\r\n      } else if (telop.includes('雪')) {\r\n        return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2744.png';\r\n      }\r\n      return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f47e.png';\r\n    }\r\n  </script>\r\n</body>\r\n</html>";
+      this.shadowRoot.innerHTML = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- スマホブラウザのアドレスバー・ヘッダー色設定 -->
+  <meta name="theme-color" content="#1a1a2e">
+  <title>一生死なない！レトロお天気＆気圧ウィジェット</title>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #1a1a2e;
+      color: #00ffcc;
+      font-family: 'DotGothic16', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start; /* 中央寄せから「上寄せ」に変更 */
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px 10px 30px 10px; /* 上部余白を詰めてスッキリ配置 */
+      box-sizing: border-box;
+    }
+
+    /* --- モーダル表示時に背景スクロールを完璧にロック --- */
+    body.modal-open {
+      overflow: hidden !important;
+    }
+
+    .widget-card {
+      border: 4px solid #00ffcc;
+      padding: 18px;
+      width: 310px;
+      background-color: #0f0f1b;
+      box-shadow: 6px 6px 0px #ff0055;
+      text-align: center;
+      border-radius: 4px;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    /* --- 共有ボタン (3点共有アイコン) --- */
+    .share-btn-img {
+      background: transparent;
+      border: 2px solid #00ffcc;
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .share-btn-img:hover {
+      background: #00ffcc;
+    }
+    .share-btn-img:hover .share-svg-icon {
+      fill: #000;
+    }
+
+    /* どこでも崩れないインラインSVGアイコン */
+    .share-svg-icon {
+      width: 16px;
+      height: 16px;
+      fill: #00ffcc;
+      display: block;
+    }
+
+    .location-controls {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    /* --- カスタムプルダウン --- */
+    .custom-select-wrapper {
+      flex-grow: 1;
+      position: relative;
+      text-align: left;
+    }
+
+    .custom-select-trigger {
+      background: #0f0f1b;
+      color: #00ffcc;
+      border: 2px solid #00ffcc;
+      padding: 5px 8px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .custom-options {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #0f0f1b;
+      border: 2px solid #00ffcc;
+      border-top: none;
+      z-index: 100;
+      max-height: 180px;
+      overflow-y: auto;
+      box-shadow: 4px 4px 0px #000;
+    }
+
+    .custom-options.open {
+      display: block;
+    }
+
+    .custom-option {
+      padding: 6px 8px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px dashed #1a3a4b;
+    }
+
+    .custom-option:hover {
+      background: #1a2a3a;
+      color: #ffff00;
+    }
+
+    .option-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .delete-item-btn {
+      color: #ff0055;
+      border: 1px solid #ff0055;
+      background: transparent;
+      cursor: pointer;
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      line-height: 1;
+      padding: 0;
+      box-sizing: border-box;
+      flex-shrink: 0;
+    }
+    .delete-item-btn:hover {
+      background: #ff0055;
+      color: #fff;
+    }
+
+    /* --- 検索入力欄 ＆ クリア（×）ボタン --- */
+    .search-box {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-wrapper input {
+      width: 100%;
+      padding-right: 22px;
+      box-sizing: border-box;
+    }
+
+    .clear-input-btn {
+      position: absolute;
+      right: 4px;
+      background: transparent;
+      border: none;
+      color: #ff0055;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0 4px;
+      display: none;
+      line-height: 1;
+    }
+    .clear-input-btn:hover {
+      color: #ffff00;
+    }
+
+    input, button {
+      background: #0f0f1b;
+      color: #00ffcc;
+      border: 2px solid #00ffcc;
+      padding: 5px;
+      font-family: inherit;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    input {
+      color: #ffff00;
+      cursor: text;
+    }
+
+    button:hover { background: #00ffcc; color: #000; }
+
+    .weather-display { margin: 10px 0; }
+
+    .weather-icon-box {
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 5px;
+    }
+
+    .pixel-icon {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .weather-icon-box img {
+      width: 64px;
+      height: 64px;
+    }
+
+    .loading-icon {
+      width: 48px;
+      height: 48px;
+    }
+
+    .status-icon {
+      width: 18px;
+      height: 18px;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    .detail-icon, .option-icon, .btn-icon {
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+    }
+
+    .temp-display {
+      font-size: 28px;
+      color: #ffff00;
+      margin: 2px 0;
+    }
+
+    .barometer-box {
+      margin-top: 12px;
+      padding: 8px;
+      border: 2px dashed #ff0055;
+      background-color: #2a081d;
+    }
+
+    .alert-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 5px;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    .details {
+      font-size: 13px;
+      margin-top: 10px;
+      color: #888ff0;
+      text-align: left;
+      line-height: 1.8;
+    }
+
+    .detail-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* --- 埋め込みコードボタン --- */
+    .embed-footer {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px dashed #1a3a4b;
+    }
+    .embed-btn-square {
+      width: 100%;
+      background: #0f0f1b;
+      color: #888ff0;
+      border: 2px solid #888ff0;
+      padding: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.1s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .embed-btn-square:hover {
+      background: #888ff0;
+      color: #000;
+    }
+
+    /* --- モーダルダイアログ --- */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 15px;
+      box-sizing: border-box;
+    }
+    .modal-card {
+      background: #0f0f1b;
+      border: 3px solid #00ffcc;
+      box-shadow: 6px 6px 0px #ff0055;
+      padding: 16px;
+      max-width: 340px;
+      width: 100%;
+      text-align: left;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .modal-title {
+      color: #ffff00;
+      font-size: 14px;
+      margin-top: 0;
+      margin-bottom: 10px;
+      border-bottom: 2px dashed #00ffcc;
+      padding-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .modal-desc {
+      font-size: 11px;
+      color: #00ffcc;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    .modal-notice {
+      font-size: 11px;
+      color: #ff88a3;
+      line-height: 1.4;
+      margin-bottom: 10px;
+      background: #2a081d;
+      padding: 6px;
+      border: 1px dashed #ff0055;
+    }
+    .code-textarea {
+      width: 100%;
+      height: 60px;
+      background: #1a1a2e;
+      color: #ffff00;
+      border: 1px solid #00ffcc;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 6px;
+      box-sizing: border-box;
+      resize: none;
+      margin-bottom: 10px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .modal-actions button {
+      font-size: 11px;
+      padding: 5px 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .modal-actions button:hover .share-svg-icon {
+      fill: #000;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="widget-card">
+    <div class="header-bar">
+      <span style="font-size: 11px; color: #ff0055;">[ RETRO_WEATHER_v3.3 ]</span>
+      <button id="shareBtn" class="share-btn-img" title="お天気メモとして保存・共有">
+        <svg class="share-svg-icon" viewBox="0 0 24 24">
+          <path d="M18 16.08c-.76 0-1.44.3-1.96.77l-7.13-4.15c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+        </svg>
+      </button>
+    </div>
+    
+    <!-- プルダウン ＆ GPSボタン -->
+    <div class="location-controls">
+      <div class="custom-select-wrapper">
+        <div id="selectTrigger" class="custom-select-trigger">
+          <span id="selectedText">選択中...</span>
+          <span>▼</span>
+        </div>
+        <div id="selectOptions" class="custom-options"></div>
+      </div>
+      <button id="gpsBtn" title="GPSで現在地を取得">GPS</button>
+    </div>
+
+    <!-- 検索 ＆ クリア（×）ボタン -->
+    <div class="search-box">
+      <div class="input-wrapper">
+        <input type="text" id="searchInput" placeholder="例: 東京タワー, 秩父, 飯能">
+        <button id="clearInputBtn" class="clear-input-btn" title="入力内容をクリア">×</button>
+      </div>
+      <button id="searchBtn">追加</button>
+    </div>
+
+    <!-- メイン表示 -->
+    <div class="weather-display">
+      <div id="displayLocationName" style="font-size: 13px; color: #ffff00; margin-bottom: 4px;">---</div>
+      <div class="weather-icon-box">
+        <img id="weatherImg" class="pixel-icon" src="" alt="天気" style="display:none;">
+        <img id="loadingImg" class="pixel-icon loading-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/23f3.png" alt="読み込み中">
+      </div>
+      <div id="weatherTelop" style="font-size: 17px;">データ取得中...</div>
+      <div id="tempDisplay" class="temp-display">-- ℃</div>
+    </div>
+
+    <!-- 気圧アラート -->
+    <div class="barometer-box">
+      <div>現地気圧: <span id="pressureDisplay">--</span> hPa</div>
+      <div class="alert-container">
+        <img id="pressureIcon" class="pixel-icon status-icon" src="" alt="気圧状態" style="display:none;">
+        <span id="pressureAlert">チェック中...</span>
+      </div>
+    </div>
+
+    <!-- 詳細 -->
+    <div class="details">
+      <div class="detail-item">
+        <img class="pixel-icon detail-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4a8.png" alt="風">
+        風速: <span id="windSpeed">--</span> m/s
+      </div>
+      <div class="detail-item">
+        <img class="pixel-icon detail-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f506.png" alt="UV">
+        UV指数: <span id="uvIndex">--</span>
+      </div>
+      <div class="detail-item">
+        <img class="pixel-icon detail-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f332.png" alt="花粉">
+        スギ花粉: <span id="pollenIndex">--</span>
+      </div>
+    </div>
+
+    <!-- 埋め込みコードボタン -->
+    <div class="embed-footer">
+      <button id="openEmbedModal" class="embed-btn-square">
+        <img class="pixel-icon btn-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2699.png" alt="設定">
+        埋め込みコードを取得
+      </button>
+    </div>
+  </div>
+
+  <!-- 位置情報利用確認・GPSオフ警告モーダル (v3.0.6完全スタイル統合) -->
+  <div id="initLocationModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 class="modal-title">
+        <img class="pixel-icon btn-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png" alt="GPS">
+        位置情報の利用確認
+      </h3>
+      <div id="initModalDesc" class="modal-desc">
+        現在地のリアルタイムなお天気を取得しますか？<br>
+        ※端末のGPS機能をオンにしてご利用ください。
+      </div>
+      <div id="initModalNotice" class="modal-notice" style="display: none;">
+        ⚠️ GPSがオフか許可されていません。<br>端末の設定でGPSをオンにしてから再試行してください。
+      </div>
+      <div class="modal-actions">
+        <button id="initGpsBtn">
+          <img class="pixel-icon btn-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png" alt="ピン">
+          <span id="initGpsBtnText">現在地を取得</span>
+        </button>
+        <button id="initCancelBtn" style="border-color: #ff0055; color: #ff0055;">デフォルト (東京)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 埋め込みパーツ モーダル画面 -->
+  <div id="embedModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 class="modal-title">
+        <img class="pixel-icon btn-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f47e.png" alt="インベーダー">
+        お天気埋め込みパーツ
+      </h3>
+      <div class="modal-desc">
+        ご自身のブログやホームページ（WordPress、はてなブログ、Note、自作HPなど）に貼り付けると、選択中の場所のリアルタイムお天気を表示できます（※昔でいう「ブログパーツ」機能です）。
+      </div>
+      <div class="modal-notice">
+        ※HTML（iframe）対応のサイトでご利用いただけます。テキスト専用のSNS等では表示できません。<br>
+        ※埋め込み表示内から詳細を操作した場合、本家アプリページが開きます。
+      </div>
+      <textarea id="embedCodeText" class="code-textarea" readonly></textarea>
+      <div class="modal-actions">
+        <button id="copyEmbedBtn">
+          <img class="pixel-icon btn-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cb.png" alt="クリップボード">
+          コードコピー
+        </button>
+        <button id="shareEmbedBtn">
+          <svg class="share-svg-icon" viewBox="0 0 24 24">
+            <path d="M18 16.08c-.76 0-1.44.3-1.96.77l-7.13-4.15c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+          </svg>
+          アプリで共有
+        </button>
+        <button id="closeEmbedModal" style="border-color: #ff0055; color: #ff0055;">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ICON_GPS = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png"; // 📡 GPS
+    const ICON_PIN = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png"; // 📍 ピン
+    const ICON_SEARCH = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f50d.png"; // 🔍 検索
+    const STORAGE_KEY = 'retro_weather_custom_cities';
+    const VISITED_KEY = 'retro_weather_visited';
+    const GPS_ALLOWED_KEY = 'retro_weather_gps_allowed';
+
+    const defaultPresets = [
+      { name: "現在地", lat: 35.6895, lon: 139.6917, jmaFile: "130000", areaName: "東京地方", icon: ICON_GPS, isPreset: true, subName: "" },
+      { name: "所沢", lat: 35.7994, lon: 139.4692, jmaFile: "110000", areaName: "南部", icon: ICON_PIN, isPreset: true },
+      { name: "東京", lat: 35.6895, lon: 139.6917, jmaFile: "130000", areaName: "東京地方", icon: ICON_PIN, isPreset: true },
+      { name: "大阪", lat: 34.6937, lon: 135.5023, jmaFile: "270000", areaName: "大阪府", icon: ICON_PIN, isPreset: true },
+      { name: "札幌", lat: 43.0621, lon: 141.3544, jmaFile: "016000", areaName: "石狩地方", icon: ICON_PIN, isPreset: true }
+    ];
+
+    let currentLocations = [...defaultPresets];
+    let selectedLocation = defaultPresets[2]; // 東京をデフォルト表示場所にする
+
+    let currentFetchedData = {
+      weather: "--",
+      temp: "--",
+      pressure: "--",
+      wind: "--",
+      uv: "--",
+      pollen: "--"
+    };
+
+    const selectTrigger = document.getElementById('selectTrigger');
+    const selectOptions = document.getElementById('selectOptions');
+    const selectedText = document.getElementById('selectedText');
+    const gpsBtn = document.getElementById('gpsBtn');
+    const searchBtn = document.getElementById('searchBtn');
+    const searchInput = document.getElementById('searchInput');
+    const clearInputBtn = document.getElementById('clearInputBtn');
+    const shareBtn = document.getElementById('shareBtn');
+
+    const openEmbedModal = document.getElementById('openEmbedModal');
+    const closeEmbedModal = document.getElementById('closeEmbedModal');
+    const embedModal = document.getElementById('embedModal');
+    const embedCodeText = document.getElementById('embedCodeText');
+    const copyEmbedBtn = document.getElementById('copyEmbedBtn');
+    const shareEmbedBtn = document.getElementById('shareEmbedBtn');
+
+    const initLocationModal = document.getElementById('initLocationModal');
+    const initGpsBtn = document.getElementById('initGpsBtn');
+    const initGpsBtnText = document.getElementById('initGpsBtnText');
+    const initCancelBtn = document.getElementById('initCancelBtn');
+    const initModalNotice = document.getElementById('initModalNotice');
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSavedLocations();
+      checkUrlParams();
+      renderCustomSelect();
+
+      const hasVisited = localStorage.getItem(VISITED_KEY);
+      const isGpsAllowed = localStorage.getItem(GPS_ALLOWED_KEY) === 'true';
+
+      if (!hasVisited || !isGpsAllowed) {
+        openInitModal();
+        fetchWeatherData(selectedLocation);
+      } else {
+        executeGpsFetch(false);
+      }
+    });
+
+    function openInitModal() {
+      initLocationModal.style.display = 'flex';
+      document.body.classList.add('modal-open');
+    }
+
+    function closeInitModal() {
+      initLocationModal.style.display = 'none';
+      document.body.classList.remove('modal-open');
+    }
+
+    initGpsBtn.addEventListener('click', () => {
+      executeGpsFetch(true);
+    });
+
+    initCancelBtn.addEventListener('click', () => {
+      localStorage.setItem(VISITED_KEY, 'true');
+      localStorage.setItem(GPS_ALLOWED_KEY, 'false');
+      closeInitModal();
+      fetchWeatherData(selectedLocation);
+    });
+
+    searchInput.addEventListener('input', () => {
+      clearInputBtn.style.display = searchInput.value ? 'block' : 'none';
+    });
+
+    clearInputBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      clearInputBtn.style.display = 'none';
+      searchInput.focus();
+    });
+
+    selectTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectOptions.classList.toggle('open');
+    });
+
+    document.addEventListener('click', () => selectOptions.classList.remove('open'));
+
+    function renderCustomSelect() {
+      selectOptions.innerHTML = '';
+
+      selectedText.innerHTML = \`
+        <span class="option-label">
+          <img class="pixel-icon option-icon" src="\${selectedLocation.icon}">
+          \${selectedLocation.name}
+        </span>
+      \`;
+
+      currentLocations.forEach((loc, index) => {
+        const optionDiv = document.createElement('div');
+        optionDiv.className = 'custom-option';
+
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'option-label';
+        labelDiv.innerHTML = \`<img class="pixel-icon option-icon" src="\${loc.icon}"> \${loc.name}\`;
+        
+        optionDiv.appendChild(labelDiv);
+
+        if (!loc.isPreset) {
+          const delBtn = document.createElement('button');
+          delBtn.className = 'delete-item-btn';
+          delBtn.innerText = '×';
+          delBtn.title = '削除';
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteLocation(index);
+          });
+          optionDiv.appendChild(delBtn);
+        }
+
+        optionDiv.addEventListener('click', () => {
+          selectedLocation = loc;
+          renderCustomSelect();
+          selectOptions.classList.remove('open');
+          fetchWeatherData(selectedLocation);
+        });
+
+        selectOptions.appendChild(optionDiv);
+      });
+    }
+
+    function deleteLocation(index) {
+      const target = currentLocations[index];
+      currentLocations.splice(index, 1);
+      
+      const savedOnly = currentLocations.filter(l => !l.isPreset);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedOnly));
+
+      if (selectedLocation.name === target.name) {
+        selectedLocation = currentLocations[0];
+      }
+
+      renderCustomSelect();
+      fetchWeatherData(selectedLocation);
+    }
+
+    function checkUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const lat = parseFloat(params.get('lat'));
+      const lon = parseFloat(params.get('lon'));
+      const name = params.get('name');
+
+      if (lat && lon && name) {
+        const decodedName = decodeURIComponent(name);
+        
+        const paramLoc = {
+          name: decodedName,
+          lat: lat,
+          lon: lon,
+          jmaFile: "130000",
+          areaName: "東京地方",
+          icon: ICON_SEARCH,
+          isPreset: false
+        };
+
+        selectedLocation = paramLoc;
+        searchInput.value = decodedName;
+        clearInputBtn.style.display = 'block';
+      }
+    }
+
+    function getFormattedDateTime() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const date = now.getDate();
+      const dayList = ['日', '月', '火', '水', '木', '金', '土'];
+      const day = dayList[now.getDay()];
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+
+      return \`\${year}年\${month}月\${date}日（\${day}）\${hours}:\${minutes}\`;
+    }
+
+    /* --- Web Share API 共有処理 --- */
+    shareBtn.addEventListener('click', async () => {
+      const baseUrl = window.location.origin + window.location.pathname;
+
+      let shareName = selectedLocation.name;
+      if (selectedLocation.name === "現在地" && selectedLocation.subName) {
+        shareName = selectedLocation.subName;
+      }
+
+      const shareUrl = \`\${baseUrl}?lat=\${selectedLocation.lat}&lon=\${selectedLocation.lon}&name=\${encodeURIComponent(shareName)}\`;
+      const timeStr = getFormattedDateTime();
+
+      const shareText = 
+\`【お天気メモ日記】
+--------------------
+📅 日時: \${timeStr}
+📍 場所: \${shareName}
+
+🌤️ 天気: \${currentFetchedData.weather}
+🌡️ 気温: \${currentFetchedData.temp} ℃
+🎈 気圧: \${currentFetchedData.pressure} hPa
+💨 風速: \${currentFetchedData.wind} m/s
+☀️ UV指数: \${currentFetchedData.uv}
+🌲 スギ花粉: \${currentFetchedData.pollen}
+--------------------
+🔗 今日のリアルタイムお天気リンク:
+\${shareUrl}\`;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: \`\${shareName}のお天気メモ\`,
+            text: shareText
+          });
+        } catch (err) {
+          console.log('共有キャンセル:', err);
+        }
+      } else {
+        try {
+          await navigator.clipboard.writeText(shareText);
+          alert(\`お天気メモをコピーしました！\n\n\${shareText}\`);
+        } catch (err) {
+          prompt('以下のテキストをコピーしてください:', shareText);
+        }
+      }
+    });
+
+    /* --- モーダル制御 --- */
+    openEmbedModal.addEventListener('click', () => {
+      const baseUrl = window.location.origin + window.location.pathname;
+      let shareName = selectedLocation.name;
+      if (selectedLocation.name === "現在地" && selectedLocation.subName) {
+        shareName = selectedLocation.subName;
+      }
+      const targetUrl = \`\${baseUrl}?lat=\${selectedLocation.lat}&lon=\${selectedLocation.lon}&name=\${encodeURIComponent(shareName)}\`;
+      
+      const iframeCode = \`<iframe src="\${targetUrl}" width="330" height="520" frameborder="0" style="border:none; overflow:hidden;" scrolling="no"></iframe>\`;
+      embedCodeText.value = iframeCode;
+      
+      embedModal.style.display = 'flex';
+      document.body.classList.add('modal-open');
+    });
+
+    function closeModal() {
+      embedModal.style.display = 'none';
+      document.body.classList.remove('modal-open');
+    }
+
+    closeEmbedModal.addEventListener('click', closeModal);
+
+    embedModal.addEventListener('click', (e) => {
+      if (e.target === embedModal) closeModal();
+    });
+
+    copyEmbedBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(embedCodeText.value);
+        alert('埋め込みコードをコピーしました！');
+      } catch (e) {
+        embedCodeText.select();
+        document.execCommand('copy');
+        alert('コードをコピーしました！');
+      }
+    });
+
+    shareEmbedBtn.addEventListener('click', async () => {
+      let shareName = selectedLocation.name;
+      if (selectedLocation.name === "現在地" && selectedLocation.subName) {
+        shareName = selectedLocation.subName;
+      }
+      const shareText = \`【\${shareName}の埋め込みコード】\n\n\${embedCodeText.value}\`;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: \`\${shareName}の埋め込みコード\`,
+            text: shareText
+          });
+        } catch (err) {
+          console.log('共有キャンセル:', err);
+        }
+      } else {
+        try {
+          await navigator.clipboard.writeText(shareText);
+          alert(\`埋め込みコードをコピーしました！\n\n\${shareText}\`);
+        } catch (err) {
+          prompt('以下のテキストをコピーしてください:', shareText);
+        }
+      }
+    });
+
+    function loadSavedLocations() {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      saved.forEach(loc => {
+        loc.icon = ICON_SEARCH;
+        currentLocations.push(loc);
+      });
+    }
+
+    function addLocationToList(newLoc) {
+      const exists = currentLocations.some(l => l.name === newLoc.name);
+      if (!exists) {
+        currentLocations.push(newLoc);
+        const savedOnly = currentLocations.filter(l => !l.isPreset);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedOnly));
+      }
+    }
+
+    searchBtn.addEventListener('click', async () => {
+      const query = searchInput.value.trim();
+      if (!query) return;
+
+      document.getElementById('weatherTelop').innerText = '検索中...';
+
+      try {
+        const geoUrl = \`https://geocoding-api.open-meteo.com/v1/search?name=\${encodeURIComponent(query)}&count=5&language=ja&format=json\`;
+        let res = await fetch(geoUrl).then(r => r.json());
+        let place = res.results?.find(p => p.country_code === 'JP') || res.results?.[0];
+
+        if (!place) {
+          const osmUrl = \`https://nominatim.openstreetmap.org/search?format=json&q=\${encodeURIComponent(query + ' 日本')}&limit=1\`;
+          const osmRes = await fetch(osmUrl).then(r => r.json());
+          if (osmRes && osmRes.length > 0) {
+            place = { name: query, latitude: parseFloat(osmRes[0].lat), longitude: parseFloat(osmRes[0].lon) };
+          }
+        }
+
+        if (!place) {
+          alert('該当する場所が見つかりませんでした');
+          document.getElementById('weatherTelop').innerText = '検索失敗';
+          return;
+        }
+
+        const newLoc = {
+          name: query,
+          lat: place.latitude,
+          lon: place.longitude,
+          jmaFile: "130000",
+          areaName: "東京地方",
+          icon: ICON_SEARCH,
+          isPreset: false
+        };
+
+        addLocationToList(newLoc);
+        selectedLocation = newLoc;
+        renderCustomSelect();
+        fetchWeatherData(selectedLocation);
+
+      } catch (err) {
+        console.error(err);
+        alert('検索エラーが発生しました');
+      }
+    });
+
+    async function reverseGeocode(lat, lon) {
+      try {
+        const res = await fetch(\`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${lat}&lon=\${lon}&zoom=12&accept-language=ja\`).then(r => r.json());
+        if (res && res.address) {
+          return res.address.city || res.address.town || res.address.village || res.address.suburb || res.address.county || "";
+        }
+      } catch (e) {
+        console.error('逆ジオコーディングエラー:', e);
+      }
+      return "";
+    }
+
+    gpsBtn.addEventListener('click', () => {
+      executeGpsFetch(true);
+    });
+
+    function executeGpsFetch(isInteractive = false) {
+      if (!navigator.geolocation) {
+        handleGpsError();
+        return;
+      }
+
+      document.getElementById('weatherTelop').innerText = '現在地を取得中...';
+
+      const gpsTimeout = setTimeout(() => {
+        handleGpsError();
+      }, 5000);
+
+      navigator.geolocation.getCurrentPosition(async position => {
+        clearTimeout(gpsTimeout);
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        
+        localStorage.setItem(VISITED_KEY, 'true');
+        localStorage.setItem(GPS_ALLOWED_KEY, 'true');
+        closeInitModal();
+
+        const detectedCity = await reverseGeocode(lat, lon);
+
+        if (detectedCity) {
+          searchInput.value = detectedCity;
+          clearInputBtn.style.display = 'block';
+        }
+
+        const gpsLoc = {
+          name: "現在地",
+          subName: detectedCity,
+          lat: lat,
+          lon: lon,
+          jmaFile: "130000",
+          areaName: "東京地方",
+          icon: ICON_GPS,
+          isPreset: true
+        };
+
+        currentLocations[0] = gpsLoc;
+        selectedLocation = gpsLoc;
+        renderCustomSelect();
+        fetchWeatherData(selectedLocation);
+      }, (error) => {
+        clearTimeout(gpsTimeout);
+        handleGpsError();
+      }, { timeout: 5000, enableHighAccuracy: true });
+    }
+
+    function handleGpsError() {
+      localStorage.setItem(VISITED_KEY, 'true');
+      localStorage.setItem(GPS_ALLOWED_KEY, 'false');
+      
+      openInitModal();
+      initModalNotice.style.display = 'block';
+      initGpsBtnText.innerText = 'オンにしたので再試行';
+      
+      fetchWeatherData(selectedLocation);
+    }
+
+    async function fetchWeatherData(locationData) {
+      document.getElementById('loadingImg').style.display = 'inline';
+      document.getElementById('weatherImg').style.display = 'none';
+      document.getElementById('weatherTelop').innerText = '通信中...';
+
+      let displayName = \`[ \${locationData.name} ]\`;
+      if (locationData.name === "現在地" && locationData.subName) {
+        displayName = \`[ 現在地 : \${locationData.subName} ]\`;
+      }
+      document.getElementById('displayLocationName').innerText = displayName;
+
+      try {
+        const jmaUrl = \`https://www.jma.go.jp/bosai/forecast/data/forecast/\${locationData.jmaFile}.json\`;
+        const openMeteoUrl = \`https://api.open-meteo.com/v1/forecast?latitude=\${locationData.lat}&longitude=\${locationData.lon}&current=temperature_2m,wind_speed_10m,uv_index,surface_pressure&timezone=Asia%2FTokyo\`;
+        const pollenUrl = \`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=\${locationData.lat}&longitude=\${locationData.lon}&current=birch_pollen&timezone=Asia%2FTokyo\`;
+
+        const [jmaRes, openMeteoRes, pollenRes] = await Promise.all([
+          fetch(jmaUrl).then(r => r.json()).catch(() => null),
+          fetch(openMeteoUrl).then(r => r.json()),
+          fetch(pollenUrl).then(r => r.json()).catch(() => null)
+        ]);
+
+        let jmaWeatherTelop = "晴れ/曇り";
+        if (jmaRes && jmaRes[0]?.timeSeries[0]?.areas) {
+          const areas = jmaRes[0].timeSeries[0].areas;
+          const targetArea = areas.find(a => a.area.name.includes(locationData.areaName)) || areas[0];
+          jmaWeatherTelop = targetArea.weathers[0];
+        }
+
+        const currentTemp = openMeteoRes.current.temperature_2m;
+        const windSpeed = openMeteoRes.current.wind_speed_10m;
+        const uvIndex = openMeteoRes.current.uv_index;
+        const pressure = openMeteoRes.current.surface_pressure;
+        const birchPollen = pollenRes?.current?.birch_pollen ?? 0;
+        const pollenText = birchPollen > 0 ? \`\${birchPollen} (飛散中)\` : '少ない/無';
+
+        document.getElementById('weatherTelop').innerText = jmaWeatherTelop;
+        document.getElementById('tempDisplay').innerText = \`\${currentTemp} ℃\`;
+        document.getElementById('windSpeed').innerText = windSpeed;
+        document.getElementById('uvIndex').innerText = uvIndex;
+        document.getElementById('pressureDisplay').innerText = pressure;
+        document.getElementById('pollenIndex').innerText = pollenText;
+
+        currentFetchedData = {
+          weather: jmaWeatherTelop,
+          temp: currentTemp,
+          pressure: pressure,
+          wind: windSpeed,
+          uv: uvIndex,
+          pollen: pollenText
+        };
+
+        evaluatePressure(pressure);
+
+        const imgEl = document.getElementById('weatherImg');
+        imgEl.src = getPixelIconUrl(jmaWeatherTelop);
+        imgEl.style.display = 'inline';
+        document.getElementById('loadingImg').style.display = 'none';
+
+      } catch (error) {
+        console.error('Fetch Error:', error);
+        document.getElementById('weatherTelop').innerText = 'データ取得失敗';
+      }
+    }
+
+    function evaluatePressure(pressure) {
+      const alertEl = document.getElementById('pressureAlert');
+      const iconEl = document.getElementById('pressureIcon');
+      iconEl.style.display = 'inline-block';
+
+      if (pressure < 1005) {
+        alertEl.innerText = '低気圧警戒！無理せず休もう';
+        alertEl.style.color = '#ff3366';
+        iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a0.png';
+      } else if (pressure < 1010) {
+        alertEl.innerText = 'やや低気圧：頭痛・倦怠感注意';
+        alertEl.style.color = '#ff9900';
+        iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a1.png';
+      } else {
+        alertEl.innerText = '気圧安定：快適コンディション';
+        alertEl.style.color = '#00ffcc';
+        iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2728.png';
+      }
+    }
+
+    function getPixelIconUrl(telop) {
+      if (telop.includes('晴')) {
+        return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2600.png';
+      } else if (telop.includes('雨')) {
+        return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f327.png';
+      } else if (telop.includes('くもり') || telop.includes('曇')) {
+        return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2601.png';
+      } else if (telop.includes('雪')) {
+        return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2744.png';
+      }
+      return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f47e.png';
+    }
+  </script>
+</body>
+</html>`;
     }
 
     initElements() {
@@ -367,30 +1453,38 @@
       this.fetchWeatherData(this.selectedLocation);
     }
 
-    // 描画・文字更新の汎用処理（将来要素が増えてもそのまま画面反映可能）
-    updateElementText(id, value) {
-      const el = this.shadowRoot.getElementById(id);
-      if (el) {
-        el.innerText = value;
-        // 非表示フラグや意図しない display:none が残らないよう確実化
-        if (el.style.display === 'none') el.style.display = '';
-      }
+    // 暗くて見えなくなっているテキスト要素にレトロ文字・色のスタイルをピンポイント適用する補助関数
+    setRetroStyle(el) {
+      if (!el) return;
+      el.style.color = '#ffffff'; // ハッキリ見える白文字に変更
+      el.style.fontFamily = "'DotGothic16', monospace";
+      el.style.display = 'inline-block';
     }
 
     async fetchWeatherData(locationData) {
       const sr = this.shadowRoot;
+      const weatherTelopEl = sr.getElementById('weatherTelop');
+      const tempDisplayEl = sr.getElementById('tempDisplay');
+      const windSpeedEl = sr.getElementById('windSpeed');
+      const uvIndexEl = sr.getElementById('uvIndex');
+      const pressureDisplayEl = sr.getElementById('pressureDisplay');
+      const pollenIndexEl = sr.getElementById('pollenIndex');
+      const displayLocationNameEl = sr.getElementById('displayLocationName');
       const loadingImg = sr.getElementById('loadingImg');
       const weatherImg = sr.getElementById('weatherImg');
 
+      // 暗いまま放置されていたテキスト要素だけにピンポイントでスタイルを適用
+      [weatherTelopEl, tempDisplayEl, windSpeedEl, uvIndexEl, pressureDisplayEl, pollenIndexEl, displayLocationNameEl].forEach(el => this.setRetroStyle(el));
+
       if (loadingImg) loadingImg.style.display = 'inline';
       if (weatherImg) weatherImg.style.display = 'none';
-      this.updateElementText('weatherTelop', '通信中...');
+      if (weatherTelopEl) weatherTelopEl.innerText = '通信中...';
 
       let displayName = `[ ${locationData.name} ]`;
       if (locationData.name === "現在地" && locationData.subName) {
         displayName = `[ 現在地 : ${locationData.subName} ]`;
       }
-      this.updateElementText('displayLocationName', displayName);
+      if (displayLocationNameEl) displayLocationNameEl.innerText = displayName;
 
       try {
         const jmaUrl = `https://www.jma.go.jp/bosai/forecast/data/forecast/${locationData.jmaFile}.json`;
@@ -417,13 +1511,12 @@
         const birchPollen = pollenRes?.current?.birch_pollen ?? 0;
         const pollenText = birchPollen > 0 ? `${birchPollen} (飛散中)` : '少ない/無';
 
-        // 天気テキスト（くもり 所により 雨 など）を含む全ての要素を確実に画面描画
-        this.updateElementText('weatherTelop', jmaWeatherTelop);
-        this.updateElementText('tempDisplay', `${currentTemp} ℃`);
-        this.updateElementText('windSpeed', windSpeed);
-        this.updateElementText('uvIndex', uvIndex);
-        this.updateElementText('pressureDisplay', pressure);
-        this.updateElementText('pollenIndex', pollenText);
+        if (weatherTelopEl) weatherTelopEl.innerText = jmaWeatherTelop;
+        if (tempDisplayEl) tempDisplayEl.innerText = `${currentTemp} ℃`;
+        if (windSpeedEl) windSpeedEl.innerText = windSpeed;
+        if (uvIndexEl) uvIndexEl.innerText = uvIndex;
+        if (pressureDisplayEl) pressureDisplayEl.innerText = pressure;
+        if (pollenIndexEl) pollenIndexEl.innerText = pollenText;
 
         this.currentFetchedData = { weather: jmaWeatherTelop, temp: currentTemp, pressure: pressure, wind: windSpeed, uv: uvIndex, pollen: pollenText };
 
@@ -437,7 +1530,7 @@
 
       } catch (error) {
         console.error('Fetch Error:', error);
-        this.updateElementText('weatherTelop', 'データ取得失敗');
+        if (weatherTelopEl) weatherTelopEl.innerText = 'データ取得失敗';
       }
     }
 
