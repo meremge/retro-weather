@@ -1,0 +1,57 @@
+name: Sync FC2 to GitHub Widget (BT Version)
+
+on:
+  schedule:
+    # 毎日夜中（日本時間午前9時頃）に自動チェック
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 手動で「今すぐ同期」を押すことも可能
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch FC2 HTML and Convert to BT JS
+        run: |
+          # 1. FC2のHTMLを取得
+          URL="https://himithunosupeku.web.fc2.com/miniapps/sample/Weather/RETRO_WEATHER.html"
+          HTML_CONTENT=$(curl -sL "$URL")
+          
+          if [ -z "$HTML_CONTENT" ]; then
+            echo "Error: Failed to fetch FC2 content"
+            exit 1
+          fi
+
+          # 2. ボット用JS (retro-weather-widget-bt.js) の生成
+          cat << 'EOF' > retro-weather-widget-bt.js
+          (function() {
+            class RetroWeatherWidget extends HTMLElement {
+              constructor() {
+                super();
+                this.attachShadow({ mode: 'open' });
+              }
+              connectedCallback() {
+                this.shadowRoot.innerHTML = `
+          EOF
+
+          # HTMLの中身を流し込む
+          echo "$HTML_CONTENT" >> retro-weather-widget-bt.js
+
+          cat << 'EOF' >> retro-weather-widget-bt.js
+                `;
+              }
+            }
+            if (!customElements.get('retro-weather-widget')) {
+              customElements.define('retro-weather-widget', RetroWeatherWidget);
+            }
+          })();
+          EOF
+
+      - name: Commit and Push if changed
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add retro-weather-widget-bt.js
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-sync from FC2 to BT JS" && git push)
