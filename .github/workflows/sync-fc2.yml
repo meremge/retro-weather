@@ -1,4 +1,4 @@
-name: Sync FC2 to GitHub Clean Page
+name: Sync FC2 to GitHub Clean JS Widget
 
 on:
   schedule:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch FC2 HTML and Clean Ads
+      - name: Fetch FC2 HTML and Build JS Widget
         run: |
           # 1. FC2からHTMLを取得
           URL="https://himithunosupeku.web.fc2.com/miniapps/sample/Weather/RETRO_WEATHER.html"
@@ -23,12 +23,41 @@ jobs:
             exit 1
           fi
 
-          # 2. FC2の自動挿入広告（<script>...</script>）を完全除去して index.html として保存
-          echo "$HTML_CONTENT" | sed '/<script/,/<\/script>/d' > index.html
+          # 2. FC2の自動挿入広告スクリプト（<script>〜</script>）を除去
+          CLEANED_HTML=$(echo "$HTML_CONTENT" | sed '/<script/,/<\/script>/d')
+
+          # 3. HTMLをJS内で安全に出力できる文字列に変換して widget.js を生成
+          cat << 'EOF' > widget.js
+          (function() {
+            var container = document.getElementById('retro-weather-container') || document.currentScript.parentNode;
+            var wrapper = document.createElement('div');
+            wrapper.className = 'retro-weather-wrapper';
+            wrapper.innerHTML = `
+          EOF
+
+          echo "$CLEANED_HTML" >> widget.js
+
+          cat << 'EOF' >> widget.js
+            `;
+            container.appendChild(wrapper);
+
+            // 埋め込まれたスクリプトタグを直接取り出して実行（お天気データの動的取得を有効化）
+            var scripts = wrapper.getElementsByTagName('script');
+            for (var i = 0; i < scripts.length; i++) {
+              var newScript = document.createElement('script');
+              if (scripts[i].src) {
+                newScript.src = scripts[i].src;
+              } else {
+                newScript.textContent = scripts[i].textContent;
+              }
+              document.body.appendChild(newScript);
+            }
+          })();
+          EOF
 
       - name: Commit and Push if changed
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Clean FC2 ads and export index.html" && git push)
+          git add widget.js
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Generate clean widget.js" && git push)
