@@ -548,15 +548,17 @@
   `;
   container.appendChild(wrapper);
 
-  // 埋め込まれたスクリプトタグを直接取り出して実行（お天気データの動的取得を有効化）
-  var scripts = wrapper.getElementsByTagName('script');
-  for (var i = 0; i < scripts.length; i++) {
-    var newScript = document.createElement('script');
-    if (scripts[i].src) {
-      newScript.src = scripts[i].src;
-    } else {
-      newScript.textContent = scripts[i].textContent;
+  // スクリプトタグを抽出し、少し遅延させて確実に即時実行させる
+  setTimeout(function() {
+    var scripts = wrapper.getElementsByTagName('script');
+    for (var i = 0; i < scripts.length; i++) {
+      var newScript = document.createElement('script');
+      if (scripts[i].src) {
+        newScript.src = scripts[i].src;
+      } else {
+        newScript.textContent = scripts[i].textContent;
+      }
+      document.body.appendChild(newScript);
     }
-    document.body.appendChild(newScript);
-  }
+  }, 100);
 })();
