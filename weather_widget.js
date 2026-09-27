@@ -31,13 +31,19 @@
       this.render();
       this.initElements();
       this.loadSavedLocations();
-      this.checkUrlParams();
+      
+      // 1. URLパラメータ（ページ直移動）または scriptタグのsrcパラメータ（埋め込み）から読み込む
+      const hasScriptParam = this.checkParams();
+
       this.renderCustomSelect();
 
       const hasVisited = localStorage.getItem(VISITED_KEY);
       const isGpsAllowed = localStorage.getItem(GPS_ALLOWED_KEY) === 'true';
 
-      if (!hasVisited || !isGpsAllowed) {
+      // パラメータで指定がある場合は現在地モーダルを出さずにその場所を表示
+      if (hasScriptParam) {
+        this.fetchWeatherData(this.selectedLocation);
+      } else if (!hasVisited || !isGpsAllowed) {
         this.openInitModal();
         this.fetchWeatherData(this.selectedLocation);
       } else {
@@ -76,63 +82,72 @@
     }
 
     initEvents() {
-      this.initGpsBtn.addEventListener('click', () => this.executeGpsFetch(true));
-      this.initCancelBtn.addEventListener('click', () => {
+      this.initGpsBtn?.addEventListener('click', () => this.executeGpsFetch(true));
+      this.initCancelBtn?.addEventListener('click', () => {
         localStorage.setItem(VISITED_KEY, 'true');
         localStorage.setItem(GPS_ALLOWED_KEY, 'false');
         this.closeInitModal();
         this.fetchWeatherData(this.selectedLocation);
       });
 
-      this.searchInput.addEventListener('input', () => {
-        this.clearInputBtn.style.display = this.searchInput.value ? 'block' : 'none';
+      this.searchInput?.addEventListener('input', () => {
+        if (this.clearInputBtn) this.clearInputBtn.style.display = this.searchInput.value ? 'block' : 'none';
       });
 
-      this.clearInputBtn.addEventListener('click', () => {
+      this.clearInputBtn?.addEventListener('click', () => {
         this.searchInput.value = '';
         this.clearInputBtn.style.display = 'none';
         this.searchInput.focus();
       });
 
-      this.selectTrigger.addEventListener('click', (e) => {
+      this.selectTrigger?.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.selectOptions.classList.toggle('open');
+        this.selectOptions?.classList.toggle('open');
       });
 
-      this.shadowRoot.addEventListener('click', () => this.selectOptions.classList.remove('open'));
+      this.shadowRoot.addEventListener('click', () => this.selectOptions?.classList.remove('open'));
 
-      this.shareBtn.addEventListener('click', () => this.handleShare());
+      this.shareBtn?.addEventListener('click', () => this.handleShare());
 
-      this.openEmbedModal.addEventListener('click', () => {
-        const scriptUrl = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/weather_widget.js`;
+      // 【埋め込みコード生成処理】選択中の場所のパラメータを付与！
+      this.openEmbedModal?.addEventListener('click', () => {
+        let locName = this.selectedLocation.name;
+        if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
+          locName = this.selectedLocation.subName;
+        }
+
+        const query = `?lat=${this.selectedLocation.lat}&lon=${this.selectedLocation.lon}&name=${encodeURIComponent(locName)}`;
+        const scriptUrl = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/weather_widget.js${query}`;
         const embedCode = `<div id="retro-weather-widget"></div>\n<script src="${scriptUrl}" defer></script>`;
-        this.embedCodeText.value = embedCode;
-        this.embedModal.style.display = 'flex';
+        
+        if (this.embedCodeText) this.embedCodeText.value = embedCode;
+        if (this.embedModal) this.embedModal.style.display = 'flex';
       });
 
-      this.closeEmbedModal.addEventListener('click', () => {
-        this.embedModal.style.display = 'none';
+      this.closeEmbedModal?.addEventListener('click', () => {
+        if (this.embedModal) this.embedModal.style.display = 'none';
       });
 
-      this.copyEmbedBtn.addEventListener('click', async () => {
+      this.copyEmbedBtn?.addEventListener('click', async () => {
         try {
           await navigator.clipboard.writeText(this.embedCodeText.value);
           alert('埋め込みコードをコピーしました！');
         } catch (e) {
-          this.embedCodeText.select();
+          this.embedCodeText?.select();
           document.execCommand('copy');
           alert('コードをコピーしました！');
         }
       });
 
-      this.searchBtn.addEventListener('click', () => this.handleSearch());
-      this.gpsBtn.addEventListener('click', () => this.executeGpsFetch(true));
+      this.searchBtn?.addEventListener('click', () => this.handleSearch());
+      this.gpsBtn?.addEventListener('click', () => this.executeGpsFetch(true));
     }
 
-    openInitModal() { this.initLocationModal.style.display = 'flex'; }
-    closeInitModal() { this.initLocationModal.style.display = 'none'; }
+    openInitModal() { if (this.initLocationModal) this.initLocationModal.style.display = 'flex'; }
+    closeInitModal() { if (this.initLocationModal) this.initLocationModal.style.display = 'none'; }
 
     renderCustomSelect() {
+      if (!this.selectOptions || !this.selectedText) return;
       this.selectOptions.innerHTML = '';
       this.selectedText.innerHTML = `
         <span class="option-label">
@@ -197,8 +212,22 @@
       });
     }
 
-    checkUrlParams() {
-      const params = new URLSearchParams(window.location.search);
+    // 【パラメータ検出処理】ページURL または scriptタグのsrcから経度・緯度・地名を取得
+    checkParams() {
+      let params = new URLSearchParams(window.location.search);
+      
+      // ページURLにパラメータがなければ、読み込まれている script タグの src から探す
+      if (!params.get('lat')) {
+        const scripts = document.querySelectorAll('script[src*="weather_widget.js"]');
+        if (scripts.length > 0) {
+          const lastScript = scripts[scripts.length - 1];
+          const src = lastScript.getAttribute('src');
+          if (src && src.includes('?')) {
+            params = new URLSearchParams(src.split('?')[1]);
+          }
+        }
+      }
+
       const lat = parseFloat(params.get('lat'));
       const lon = parseFloat(params.get('lon'));
       const name = params.get('name');
@@ -206,18 +235,29 @@
       if (lat && lon && name) {
         const decodedName = decodeURIComponent(name);
         const paramLoc = { name: decodedName, lat: lat, lon: lon, jmaFile: "130000", areaName: "東京地方", icon: ICON_SEARCH, isPreset: false };
+        
+        // 存在しなければドロップダウンのリストに追加
+        const exists = this.currentLocations.some(l => l.name === decodedName);
+        if (!exists) {
+          this.currentLocations.push(paramLoc);
+        }
+
         this.selectedLocation = paramLoc;
-        this.searchInput.value = decodedName;
-        this.clearInputBtn.style.display = 'block';
+        if (this.searchInput) this.searchInput.value = decodedName;
+        if (this.clearInputBtn) this.clearInputBtn.style.display = 'block';
+        return true;
       }
+      return false;
     }
 
     async handleSearch() {
+      if (!this.searchInput) return;
       const query = this.searchInput.value.trim();
       if (!query) return;
 
       const sr = this.shadowRoot;
-      sr.getElementById('weatherTelop').innerText = '検索中...';
+      const weatherTelopEl = sr.getElementById('weatherTelop');
+      if (weatherTelopEl) weatherTelopEl.innerText = '検索中...';
 
       try {
         const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=ja&format=json`;
@@ -234,7 +274,7 @@
 
         if (!place) {
           alert('該当する場所が見つかりませんでした');
-          sr.getElementById('weatherTelop').innerText = '検索失敗';
+          if (weatherTelopEl) weatherTelopEl.innerText = '検索失敗';
           return;
         }
 
@@ -264,7 +304,8 @@
         return;
       }
 
-      sr.getElementById('weatherTelop').innerText = '現在地を取得中...';
+      const weatherTelopEl = sr.getElementById('weatherTelop');
+      if (weatherTelopEl) weatherTelopEl.innerText = '現在地を取得中...';
 
       const gpsTimeout = setTimeout(() => {
         this.handleGpsError();
@@ -287,9 +328,9 @@
           }
         } catch (e) {}
 
-        if (detectedCity) {
+        if (detectedCity && this.searchInput) {
           this.searchInput.value = detectedCity;
-          this.clearInputBtn.style.display = 'block';
+          if (this.clearInputBtn) this.clearInputBtn.style.display = 'block';
         }
 
         const gpsLoc = { name: "現在地", subName: detectedCity, lat: lat, lon: lon, jmaFile: "130000", areaName: "東京地方", icon: ICON_GPS, isPreset: true };
@@ -309,23 +350,28 @@
       localStorage.setItem(GPS_ALLOWED_KEY, 'false');
       
       this.openInitModal();
-      this.initModalNotice.style.display = 'block';
-      this.initGpsBtnText.innerText = 'オンにしたので再試行';
+      if (this.initModalNotice) this.initModalNotice.style.display = 'block';
+      if (this.initGpsBtnText) this.initGpsBtnText.innerText = 'オンにしたので再試行';
       
       this.fetchWeatherData(this.selectedLocation);
     }
 
     async fetchWeatherData(locationData) {
       const sr = this.shadowRoot;
-      sr.getElementById('loadingImg').style.display = 'inline';
-      sr.getElementById('weatherImg').style.display = 'none';
-      sr.getElementById('weatherTelop').innerText = '通信中...';
+      const loadingImg = sr.getElementById('loadingImg');
+      const weatherImg = sr.getElementById('weatherImg');
+      const weatherTelop = sr.getElementById('weatherTelop');
+      const displayLocationName = sr.getElementById('displayLocationName');
+
+      if (loadingImg) loadingImg.style.display = 'inline';
+      if (weatherImg) weatherImg.style.display = 'none';
+      if (weatherTelop) weatherTelop.innerText = '通信中...';
 
       let displayName = `[ ${locationData.name} ]`;
       if (locationData.name === "現在地" && locationData.subName) {
         displayName = `[ 現在地 : ${locationData.subName} ]`;
       }
-      sr.getElementById('displayLocationName').innerText = displayName;
+      if (displayLocationName) displayLocationName.innerText = displayName;
 
       try {
         const jmaUrl = `https://www.jma.go.jp/bosai/forecast/data/forecast/${locationData.jmaFile}.json`;
@@ -352,25 +398,26 @@
         const birchPollen = pollenRes?.current?.birch_pollen ?? 0;
         const pollenText = birchPollen > 0 ? `${birchPollen} (飛散中)` : '少ない/無';
 
-        sr.getElementById('weatherTelop').innerText = jmaWeatherTelop;
-        sr.getElementById('tempDisplay').innerText = `${currentTemp} ℃`;
-        sr.getElementById('windSpeed').innerText = windSpeed;
-        sr.getElementById('uvIndex').innerText = uvIndex;
-        sr.getElementById('pressureDisplay').innerText = pressure;
-        sr.getElementById('pollenIndex').innerText = pollenText;
+        if (weatherTelop) weatherTelop.innerText = jmaWeatherTelop;
+        if (sr.getElementById('tempDisplay')) sr.getElementById('tempDisplay').innerText = `${currentTemp} ℃`;
+        if (sr.getElementById('windSpeed')) sr.getElementById('windSpeed').innerText = windSpeed;
+        if (sr.getElementById('uvIndex')) sr.getElementById('uvIndex').innerText = uvIndex;
+        if (sr.getElementById('pressureDisplay')) sr.getElementById('pressureDisplay').innerText = pressure;
+        if (sr.getElementById('pollenIndex')) sr.getElementById('pollenIndex').innerText = pollenText;
 
         this.currentFetchedData = { weather: jmaWeatherTelop, temp: currentTemp, pressure: pressure, wind: windSpeed, uv: uvIndex, pollen: pollenText };
 
         this.evaluatePressure(pressure);
 
-        const imgEl = sr.getElementById('weatherImg');
-        imgEl.src = this.getPixelIconUrl(jmaWeatherTelop);
-        imgEl.style.display = 'inline';
-        sr.getElementById('loadingImg').style.display = 'none';
+        if (weatherImg) {
+          weatherImg.src = this.getPixelIconUrl(jmaWeatherTelop);
+          weatherImg.style.display = 'inline';
+        }
+        if (loadingImg) loadingImg.style.display = 'none';
 
       } catch (error) {
         console.error('Fetch Error:', error);
-        sr.getElementById('weatherTelop').innerText = 'データ取得失敗';
+        if (weatherTelop) weatherTelop.innerText = 'データ取得失敗';
       }
     }
 
@@ -378,20 +425,17 @@
       const sr = this.shadowRoot;
       const alertEl = sr.getElementById('pressureAlert');
       const iconEl = sr.getElementById('pressureIcon');
-      iconEl.style.display = 'inline-block';
+      if (iconEl) iconEl.style.display = 'inline-block';
 
       if (pressure < 1005) {
-        alertEl.innerText = '低気圧警戒！無理せず休もう';
-        alertEl.style.color = '#ff3366';
-        iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a0.png';
+        if (alertEl) { alertEl.innerText = '低気圧警戒！無理せず休もう'; alertEl.style.color = '#ff3366'; }
+        if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a0.png';
       } else if (pressure < 1010) {
-        alertEl.innerText = 'やや低気圧：頭痛・倦怠感注意';
-        alertEl.style.color = '#ff9900';
-        iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a1.png';
+        if (alertEl) { alertEl.innerText = 'やや低気圧：頭痛・倦怠感注意'; alertEl.style.color = '#ff9900'; }
+        if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a1.png';
       } else {
-        alertEl.innerText = '気圧安定：快適コンディション';
-        alertEl.style.color = '#00ffcc';
-        iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2728.png';
+        if (alertEl) { alertEl.innerText = '気圧安定：快適コンディション'; alertEl.style.color = '#00ffcc'; }
+        if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2728.png';
       }
     }
 
@@ -414,7 +458,7 @@
       const now = new Date();
       const timeStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-      const shareText = `【お天気メモ日記】\n--------------------\n📅 日時: ${timeStr}\n📍 場所: ${shareName}\n\n🌤️ 天気: ${this.currentFetchedData.weather}\n🌡️ 気温: ${this.currentFetchedData.temp} ℃\n🎈 気圧: ${this.currentFetchedData.pressure} hPa\n💨 風速: ${this.currentFetchedData.wind} m/s\n☀️ UV指数: ${this.currentFetchedData.uv}\n🌲 スギ花粉: ${this.currentFetchedData.pollen}\n--------------------\n🔗 リアルタイムお天気リンク:\n${shareUrl}`;
+      const shareText = `【お天気メモ日記】\n--------------------\n📅 日時: ${timeStr}\n📍 場所: ${shareName}\n\n🌤️ 天気: ${this.currentFetchedData.weather}\n🌡️ 気温: ${this.currentFetchedData.temp} ℃\n🎈 気圧: ${this.currentFetchedData.pressure} hPa\n💨 風速: ${this.currentFetchedData.wind} m/s\n☀️ UV指数: ${this.currentFetchedData.uv}\n🌲 スギ花粉: ${this.currentFetchedData.pollen}\n--------------------\n🔗 今日のリアルタイムお天気リンク:\n${shareUrl}`;
 
       if (navigator.share) {
         try { await navigator.share({ title: `${shareName}のお天気メモ`, text: shareText }); } catch (err) {}
