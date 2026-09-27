@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- スマホブラウザのアドレスバー・ヘッダー色設定 -->
   <meta name="theme-color" content="#1a1a2e">
   <title>一生死なない！レトロお天気＆気圧ウィジェット</title>
   <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
@@ -15,14 +14,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start; /* 中央寄せから「上寄せ」に変更 */
+      justify-content: flex-start;
       min-height: 100vh;
       margin: 0;
-      padding: 20px 10px 30px 10px; /* 上部余白を詰めてスッキリ配置 */
+      padding: 20px 10px 30px 10px;
       box-sizing: border-box;
     }
 
-    /* --- モーダル表示時に背景スクロールを完璧にロック --- */
     body.modal-open {
       overflow: hidden !important;
     }
@@ -46,7 +44,6 @@
       margin-bottom: 6px;
     }
 
-    /* --- 共有ボタン (3点共有アイコン) --- */
     .share-btn-img {
       background: transparent;
       border: 2px solid #00ffcc;
@@ -68,7 +65,6 @@
       fill: #000;
     }
 
-    /* どこでも崩れないインラインSVGアイコン */
     .share-svg-icon {
       width: 16px;
       height: 16px;
@@ -83,7 +79,6 @@
       position: relative;
     }
 
-    /* --- カスタムプルダウン --- */
     .custom-select-wrapper {
       flex-grow: 1;
       position: relative;
@@ -169,7 +164,6 @@
       color: #fff;
     }
 
-    /* --- 検索入力欄 ＆ クリア（×）ボタン --- */
     .search-box {
       display: flex;
       gap: 4px;
@@ -296,7 +290,6 @@
       gap: 6px;
     }
 
-    /* --- 埋め込みコードボタン --- */
     .embed-footer {
       margin-top: 14px;
       padding-top: 10px;
@@ -321,7 +314,6 @@
       color: #000;
     }
 
-    /* --- モーダルダイアログ --- */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -415,7 +407,6 @@
       </button>
     </div>
     
-    <!-- プルダウン ＆ GPSボタン -->
     <div class="location-controls">
       <div class="custom-select-wrapper">
         <div id="selectTrigger" class="custom-select-trigger">
@@ -427,7 +418,6 @@
       <button id="gpsBtn" title="GPSで現在地を取得">GPS</button>
     </div>
 
-    <!-- 検索 ＆ クリア（×）ボタン -->
     <div class="search-box">
       <div class="input-wrapper">
         <input type="text" id="searchInput" placeholder="例: 東京タワー, 秩父, 飯能">
@@ -436,7 +426,6 @@
       <button id="searchBtn">追加</button>
     </div>
 
-    <!-- メイン表示 -->
     <div class="weather-display">
       <div id="displayLocationName" style="font-size: 13px; color: #ffff00; margin-bottom: 4px;">---</div>
       <div class="weather-icon-box">
@@ -447,7 +436,6 @@
       <div id="tempDisplay" class="temp-display">-- ℃</div>
     </div>
 
-    <!-- 気圧アラート -->
     <div class="barometer-box">
       <div>現地気圧: <span id="pressureDisplay">--</span> hPa</div>
       <div class="alert-container">
@@ -456,7 +444,6 @@
       </div>
     </div>
 
-    <!-- 詳細 -->
     <div class="details">
       <div class="detail-item">
         <img class="pixel-icon detail-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4a8.png" alt="風">
@@ -472,7 +459,6 @@
       </div>
     </div>
 
-    <!-- 埋め込みコードボタン -->
     <div class="embed-footer">
       <button id="openEmbedModal" class="embed-btn-square">
         <img class="pixel-icon btn-icon" src="https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2699.png" alt="設定">
@@ -481,7 +467,6 @@
     </div>
   </div>
 
-  <!-- 位置情報利用確認・GPSオフ警告モーダル (v3.0.6完全スタイル統合) -->
   <div id="initLocationModal" class="modal-overlay">
     <div class="modal-card">
       <h3 class="modal-title">
@@ -505,7 +490,6 @@
     </div>
   </div>
 
-  <!-- 埋め込みパーツ モーダル画面 -->
   <div id="embedModal" class="modal-overlay">
     <div class="modal-card">
       <h3 class="modal-title">
@@ -513,10 +497,10 @@
         お天気埋め込みパーツ
       </h3>
       <div class="modal-desc">
-        ご自身のブログやホームページ（WordPress、はてなブログ、Note、自作HPなど）に貼り付けると、選択中の場所のリアルタイムお天気を表示できます（※昔でいう「ブログパーツ」機能です）。
+        ご自身のブログやホームページに貼り付けると、選択中の場所のリアルタイムお天気を表示できます。
       </div>
       <div class="modal-notice">
-        ※HTML（iframe）対応のサイトでご利用いただけます。テキスト専用のSNS等では表示できません。<br>
+        ※scriptタグ対応のサイトでご利用いただけます。<br>
         ※埋め込み表示内から詳細を操作した場合、本家アプリページが開きます。
       </div>
       <textarea id="embedCodeText" class="code-textarea" readonly></textarea>
@@ -537,9 +521,9 @@
   </div>
 
   <script>
-    const ICON_GPS = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png"; // 📡 GPS
-    const ICON_PIN = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png"; // 📍 ピン
-    const ICON_SEARCH = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f50d.png"; // 🔍 検索
+    const ICON_GPS = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png";
+    const ICON_PIN = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png";
+    const ICON_SEARCH = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f50d.png";
     const STORAGE_KEY = 'retro_weather_custom_cities';
     const VISITED_KEY = 'retro_weather_visited';
     const GPS_ALLOWED_KEY = 'retro_weather_gps_allowed';
@@ -553,7 +537,7 @@
     ];
 
     let currentLocations = [...defaultPresets];
-    let selectedLocation = defaultPresets[2]; // 東京をデフォルト表示場所にする
+    let selectedLocation = defaultPresets[2];
 
     let currentFetchedData = {
       weather: "--",
@@ -736,7 +720,6 @@
       return `${year}年${month}月${date}日（${day}）${hours}:${minutes}`;
     }
 
-    /* --- Web Share API 共有処理 --- */
     shareBtn.addEventListener('click', async () => {
       const baseUrl = window.location.origin + window.location.pathname;
 
@@ -783,17 +766,17 @@ ${shareUrl}`;
       }
     });
 
-    /* --- モーダル制御 --- */
     openEmbedModal.addEventListener('click', () => {
-      const baseUrl = window.location.origin + window.location.pathname;
-      let shareName = selectedLocation.name;
+      let locName = selectedLocation.name;
       if (selectedLocation.name === "現在地" && selectedLocation.subName) {
-        shareName = selectedLocation.subName;
+        locName = selectedLocation.subName;
       }
-      const targetUrl = `${baseUrl}?lat=${selectedLocation.lat}&lon=${selectedLocation.lon}&name=${encodeURIComponent(shareName)}`;
+
+      const query = `?lat=${selectedLocation.lat}&lon=${selectedLocation.lon}&name=${encodeURIComponent(locName)}`;
+      const scriptUrl = `https://meremge.github.io/retro-weather/weather_widget.js${query}`;
+      const embedCode = `<div id="retro-weather-widget"></div>\n<script src="${scriptUrl}" defer><\/script>`;
       
-      const iframeCode = `<iframe src="${targetUrl}" width="330" height="520" frameborder="0" style="border:none; overflow:hidden;" scrolling="no"></iframe>`;
-      embedCodeText.value = iframeCode;
+      embedCodeText.value = embedCode;
       
       embedModal.style.display = 'flex';
       document.body.classList.add('modal-open');
