@@ -1,4 +1,4 @@
-name: Sync FC2 to GitHub Widget (BT Version)
+name: Sync FC2 to GitHub Clean Page
 
 on:
   schedule:
@@ -12,9 +12,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch FC2 HTML and Convert to BT JS
+      - name: Fetch FC2 HTML and Clean Ads
         run: |
-          # 1. FC2のHTMLを取得
+          # 1. FC2からHTMLを取得
           URL="https://himithunosupeku.web.fc2.com/miniapps/sample/Weather/RETRO_WEATHER.html"
           HTML_CONTENT=$(curl -sL "$URL")
           
@@ -23,56 +23,12 @@ jobs:
             exit 1
           fi
 
-          # 2. FC2の挿入広告スクリプトを除去
-          CLEANED_HTML=$(echo "$HTML_CONTENT" | sed '/<script/,/<\/script>/d')
-
-          # 3. 本体のデータ取得JS（<script>〜</script>の中身）だけを抽出
-          SCRIPT_BODY=$(echo "$HTML_CONTENT" | sed -n '/<script>/,/<\/script>/p' | sed 's/<script>//g; s/<\/script>//g')
-
-          # 4. retro-weather-widget-bt.js の生成
-          cat << 'EOF' > retro-weather-widget-bt.js
-          (function() {
-            class RetroWeatherWidget extends HTMLElement {
-              constructor() {
-                super();
-                this.attachShadow({ mode: 'open' });
-              }
-              connectedCallback() {
-                // 広告除去済みのHTML/CSSを注入
-                this.shadowRoot.innerHTML = `
-          EOF
-
-          echo "$CLEANED_HTML" >> retro-weather-widget-bt.js
-
-          cat << 'EOF' >> retro-weather-widget-bt.js
-                `;
-
-                // 抽出した本来のデータ取得処理をShadow DOM内で直接実行
-                try {
-                  const runWidgetScript = new Function('shadow', `
-                    with (shadow) {
-          EOF
-
-          echo "$SCRIPT_BODY" >> retro-weather-widget-bt.js
-
-          cat << 'EOF' >> retro-weather-widget-bt.js
-                    }
-                  `);
-                  runWidgetScript(this.shadowRoot);
-                } catch (e) {
-                  console.error('Widget Script Error:', e);
-                }
-              }
-            }
-            if (!customElements.get('retro-weather-widget')) {
-              customElements.define('retro-weather-widget', RetroWeatherWidget);
-            }
-          })();
-          EOF
+          # 2. FC2の自動挿入広告（<script>...</script>）を完全除去して index.html として保存
+          echo "$HTML_CONTENT" | sed '/<script/,/<\/script>/d' > index.html
 
       - name: Commit and Push if changed
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add retro-weather-widget-bt.js
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Execute extracted script inside Shadow DOM" && git push)
+          git add index.html
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Clean FC2 ads and export index.html" && git push)
