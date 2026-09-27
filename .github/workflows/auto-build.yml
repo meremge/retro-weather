@@ -98,7 +98,7 @@ jobs:
               }
 
               render() {
-                this.shadowRoot.innerHTML = ${JSON.stringify(rawHtml)};
+                this.shadowRoot.innerHTML = \${JSON.stringify(rawHtml)};
               }
 
               initElements() {
