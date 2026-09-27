@@ -1,8 +1,19 @@
 (function() {
   var container = document.getElementById('retro-weather-container') || document.currentScript.parentNode;
-  var wrapper = document.createElement('div');
-  wrapper.className = 'retro-weather-wrapper';
-  wrapper.innerHTML = `
+  
+  var iframe = document.createElement('iframe');
+  iframe.style.width = '100%';
+  iframe.style.height = '480px';
+  iframe.style.border = 'none';
+  iframe.style.outline = 'none';
+  iframe.style.overflow = 'hidden';
+  iframe.scrolling = 'no';
+  
+  container.appendChild(iframe);
+
+  var doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(`
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -545,20 +556,6 @@
 <img src="//media.fc2.com/counter_img.php?id=50" style="display:none" alt="inserted by FC2 system" width="0" height="0">
 <!-- FC2, inc.--></body>
 </html>
-  `;
-  container.appendChild(wrapper);
-
-  // スクリプトタグを抽出し、少し遅延させて確実に即時実行させる
-  setTimeout(function() {
-    var scripts = wrapper.getElementsByTagName('script');
-    for (var i = 0; i < scripts.length; i++) {
-      var newScript = document.createElement('script');
-      if (scripts[i].src) {
-        newScript.src = scripts[i].src;
-      } else {
-        newScript.textContent = scripts[i].textContent;
-      }
-      document.body.appendChild(newScript);
-    }
-  }, 100);
+  `);
+  doc.close();
 })();
