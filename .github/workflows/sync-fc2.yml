@@ -2,7 +2,7 @@ name: Sync FC2 to GitHub Clean JS Widget
 
 on:
   schedule:
-    - cron: '0 * * * *' # 1時間ごとに最新のお天気データを取得
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -12,45 +12,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch FC2 Page Content
-        id: fetch_fc2
+      - name: Fetch and Bundle FC2 Widget
         run: |
-          URL="https://himithunosupeku.web.fc2.com/miniapps/sample/Weather/RETRO_WEATHER.html"
-          HTML_CONTENT=$(curl -sL "$URL")
+          # 1. FC2のメインHTMLを取得
+          HTML_CONTENT=$(curl -sL "https://himithunosupeku.web.fc2.com/miniapps/sample/Weather/RETRO_WEATHER.html")
           
-          if [ -z "$HTML_CONTENT" ]; then
-            echo "Error: Failed to fetch FC2 content"
-            exit 1
-          fi
-
-          # 広告スクリプトの除去
+          # 2. FC2の広告スクリプトを除去
           CLEANED_HTML=$(echo "$HTML_CONTENT" | sed '/<script/,/<\/script>/d')
-          
-          # widget.js を直接埋め込み形式で生成
+
+          # 3. 依存する外部JS（お天気データの処理ロジック）をボットが直接ダウンロード
+          JS_CONTENT=$(curl -sL "https://himithunosupeku.web.fc2.com/miniapps/sample/Weather/retro_weather.js" || echo "")
+
+          # 4. HTMLとJSを完全に1つの独立した widget.js に完全統合
           cat << 'EOF' > widget.js
           (function() {
             var container = document.getElementById('retro-weather-container') || document.currentScript.parentNode;
             
-            var iframe = document.createElement('iframe');
-            iframe.style.width = '100%';
-            iframe.style.height = '480px';
-            iframe.style.border = 'none';
-            iframe.style.outline = 'none';
-            iframe.style.overflow = 'hidden';
-            iframe.scrolling = 'no';
-            
-            container.appendChild(iframe);
-
-            var doc = iframe.contentWindow.document;
-            doc.open();
-            doc.write(`
+            // HTML要素を直接注入（iframeなし）
+            var wrapper = document.createElement('div');
+            wrapper.className = 'retro-weather-wrapper';
+            wrapper.innerHTML = `
           EOF
 
           echo "$CLEANED_HTML" >> widget.js
 
           cat << 'EOF' >> widget.js
-            `);
-            doc.close();
+            `;
+            container.appendChild(wrapper);
+
+            // ボットが取ってきたお天気JSプログラムをその場で直接実行
+          EOF
+
+          echo "$JS_CONTENT" >> widget.js
+
+          cat << 'EOF' >> widget.js
           })();
           EOF
 
@@ -59,4 +54,4 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add widget.js
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update bundled widget.js with full payload" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Bundle full JS logic directly into widget.js" && git push)
