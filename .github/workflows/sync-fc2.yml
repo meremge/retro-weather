@@ -15,19 +15,7 @@ jobs:
 
       - name: Fetch FC2 HTML and Convert to BT JS
         run: |
-          # 1. FC2のHTMLを取得
-          URL="https://himithunosupeku.web.fc2.com/miniapps/sample/Weather/RETRO_WEATHER.html"
-          HTML_CONTENT=$(curl -sL "$URL")
-          
-          if [ -z "$HTML_CONTENT" ]; then
-            echo "Error: Failed to fetch FC2 content"
-            exit 1
-          fi
-
-          # FC2の自動挿入広告（<script>...</script>）を除去
-          CLEANED_HTML=$(echo "$HTML_CONTENT" | sed '/<script/,/<\/script>/d')
-
-          # 2. ボット用JS (retro-weather-widget-bt.js) の生成
+          # iframeを使って本体アプリを安全かつ完全に動かすJSを生成
           cat << 'EOF' > retro-weather-widget-bt.js
           (function() {
             class RetroWeatherWidget extends HTMLElement {
@@ -37,12 +25,9 @@ jobs:
               }
               connectedCallback() {
                 this.shadowRoot.innerHTML = `
-          EOF
-
-          # 広告除去後のHTMLの中身を流し込む
-          echo "$CLEANED_HTML" >> retro-weather-widget-bt.js
-
-          cat << 'EOF' >> retro-weather-widget-bt.js
+                  <iframe src="https://himithunosupeku.web.fc2.com/miniapps/sample/Weather/RETRO_WEATHER.html" 
+                          style="width: 330px; height: 520px; border: none; overflow: hidden;" 
+                          scrolling="no"></iframe>
                 `;
               }
             }
