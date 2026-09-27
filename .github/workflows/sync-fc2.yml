@@ -2,7 +2,7 @@ name: Sync FC2 to GitHub Clean JS Widget
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 * * * *' # 1時間ごとに最新のお天気データを取得
   workflow_dispatch:
 
 jobs:
@@ -12,7 +12,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch FC2 HTML and Build Seamless Widget JS
+      - name: Fetch FC2 Page Content
+        id: fetch_fc2
         run: |
           URL="https://himithunosupeku.web.fc2.com/miniapps/sample/Weather/RETRO_WEATHER.html"
           HTML_CONTENT=$(curl -sL "$URL")
@@ -22,10 +23,10 @@ jobs:
             exit 1
           fi
 
-          # FC2の自動挿入広告スクリプトを除去
+          # 広告スクリプトの除去
           CLEANED_HTML=$(echo "$HTML_CONTENT" | sed '/<script/,/<\/script>/d')
-
-          # 枠なし・シームレスiframeを動的生成する widget.js を作成
+          
+          # widget.js を直接埋め込み形式で生成
           cat << 'EOF' > widget.js
           (function() {
             var container = document.getElementById('retro-weather-container') || document.currentScript.parentNode;
@@ -58,4 +59,4 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add widget.js
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix widget.js to use seamless iframe" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update bundled widget.js with full payload" && git push)
