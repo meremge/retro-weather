@@ -1,4 +1,11 @@
 (function() {
+  if (!document.querySelector('link[href*="DotGothic16"]')) {
+    const fontLink = document.createElement('link');
+    fontLink.rel = 'stylesheet';
+    fontLink.href = 'https://fonts.googleapis.com/css2?family=DotGothic16&display=swap';
+    document.head.appendChild(fontLink);
+  }
+
   const ICON_GPS = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png";
   const ICON_PIN = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png";
   const ICON_SEARCH = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f50d.png";
@@ -107,7 +114,6 @@
 
       this.shareBtn?.addEventListener('click', () => this.handleShare());
 
-      // 【埋め込みモーダル開閉＆コード動的更新】
       this.openEmbedModal?.addEventListener('click', () => {
         this.updateEmbedCodeText();
         if (this.embedModal) this.embedModal.style.display = 'flex';
@@ -134,7 +140,6 @@
       this.gpsBtn?.addEventListener('click', () => this.executeGpsFetch(true));
     }
 
-    // 現在の選択場所のパラメータを組み込んだ埋め込みコードをテキストエリア/要素にセット
     updateEmbedCodeText() {
       let locName = this.selectedLocation.name;
       if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
@@ -472,7 +477,7 @@
       } else {
         try {
           await navigator.clipboard.writeText(shareText);
-          alert(`お天気メモをコピーしました！\n\n${shareText}`);
+          alert('お天気メモをコピーしました！');
         } catch (err) {
           prompt('以下のテキストをコピーしてください:', shareText);
         }
