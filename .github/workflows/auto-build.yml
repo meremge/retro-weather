@@ -31,13 +31,25 @@ jobs:
 
           let rawHtml = fs.readFileSync('RETRO_WEATHER.html', 'utf8');
 
-          // DotGothic16 フォントを保証するためのタグ注入
-          if (!rawHtml.includes('DotGothic16')) {
-            const fontTag = '<link href=\"https://fonts.googleapis.com/css2?family=DotGothic16&display=swap\" rel=\"stylesheet\">';
-            rawHtml = fontTag + rawHtml;
+          // @import で DotGothic16 を Shadow DOM 内に強力適用
+          const fontImport = \"@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');\n\";
+          if (!rawHtml.includes('fonts.googleapis.com')) {
+            if (rawHtml.includes('<style>')) {
+              rawHtml = rawHtml.replace('<style>', '<style>\n' + fontImport);
+            } else {
+              rawHtml = '<style>' + fontImport + '</style>\n' + rawHtml;
+            }
           }
 
           const widgetScript = \`(function() {
+            // Shadow DOM外（親ページ）にもフォントを一度ロードさせて確実にキャッシュさせる
+            if (!document.querySelector('link[href*=\"DotGothic16\"]')) {
+              const fontLink = document.createElement('link');
+              fontLink.rel = 'stylesheet';
+              fontLink.href = 'https://fonts.googleapis.com/css2?family=DotGothic16&display=swap';
+              document.head.appendChild(fontLink);
+            }
+
             const ICON_GPS = \"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png\";
             const ICON_PIN = \"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png\";
             const ICON_SEARCH = \"https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f50d.png\";
@@ -146,7 +158,6 @@ jobs:
 
                 this.shareBtn?.addEventListener('click', () => this.handleShare());
 
-                // 【埋め込みモーダル開閉＆コード動的更新】
                 this.openEmbedModal?.addEventListener('click', () => {
                   this.updateEmbedCodeText();
                   if (this.embedModal) this.embedModal.style.display = 'flex';
@@ -173,7 +184,6 @@ jobs:
                 this.gpsBtn?.addEventListener('click', () => this.executeGpsFetch(true));
               }
 
-              // 現在の選択場所のパラメータを組み込んだ埋め込みコードをテキストエリア/要素にセット
               updateEmbedCodeText() {
                 let locName = this.selectedLocation.name;
                 if (this.selectedLocation.name === \"現在地\" && this.selectedLocation.subName) {
@@ -511,7 +521,7 @@ jobs:
                 } else {
                   try {
                     await navigator.clipboard.writeText(shareText);
-                    alert(\\\`お天気メモをコピーしました！\\\\n\\\\n\\\${shareText}\\\`);
+                    alert(\`お天気メモをコピーしました！\n\n\${shareText}\`);
                   } catch (err) {
                     prompt('以下のテキストをコピーしてください:', shareText);
                   }
@@ -545,4 +555,4 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add weather_widget.js
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix embed code text area dynamic updates and font injection" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix Google Fonts DotGothic16 loading in Shadow DOM" && git push)
