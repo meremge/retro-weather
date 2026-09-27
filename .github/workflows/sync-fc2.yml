@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch FC2 HTML and Build JS Widget
+      - name: Fetch FC2 HTML and Build Seamless Widget JS
         run: |
           URL="https://himithunosupeku.web.fc2.com/miniapps/sample/Weather/RETRO_WEATHER.html"
           HTML_CONTENT=$(curl -sL "$URL")
@@ -25,34 +25,31 @@ jobs:
           # FC2の自動挿入広告スクリプトを除去
           CLEANED_HTML=$(echo "$HTML_CONTENT" | sed '/<script/,/<\/script>/d')
 
-          # widget.js を生成
+          # 枠なし・シームレスiframeを動的生成する widget.js を作成
           cat << 'EOF' > widget.js
           (function() {
             var container = document.getElementById('retro-weather-container') || document.currentScript.parentNode;
-            var wrapper = document.createElement('div');
-            wrapper.className = 'retro-weather-wrapper';
-            wrapper.innerHTML = `
+            
+            var iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.height = '480px';
+            iframe.style.border = 'none';
+            iframe.style.outline = 'none';
+            iframe.style.overflow = 'hidden';
+            iframe.scrolling = 'no';
+            
+            container.appendChild(iframe);
+
+            var doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(`
           EOF
 
           echo "$CLEANED_HTML" >> widget.js
 
           cat << 'EOF' >> widget.js
-            `;
-            container.appendChild(wrapper);
-
-            // スクリプトタグを抽出し、少し遅延させて確実に即時実行させる
-            setTimeout(function() {
-              var scripts = wrapper.getElementsByTagName('script');
-              for (var i = 0; i < scripts.length; i++) {
-                var newScript = document.createElement('script');
-                if (scripts[i].src) {
-                  newScript.src = scripts[i].src;
-                } else {
-                  newScript.textContent = scripts[i].textContent;
-                }
-                document.body.appendChild(newScript);
-              }
-            }, 100);
+            `);
+            doc.close();
           })();
           EOF
 
@@ -61,4 +58,4 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add widget.js
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix JS execution delay in widget.js" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Fix widget.js to use seamless iframe" && git push)
