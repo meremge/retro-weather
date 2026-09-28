@@ -34,7 +34,13 @@ jobs:
           }
 
           const globalStyleRule = '\n:host, *, button, input, select, textarea, div, span { font-family: "DotGothic16", sans-serif !important; }\n:host { color: #00ffcc !important; }\n#weatherTelop { color: #00ffcc !important; }\n</style>';
-          rawHtml = rawHtml.replace('</style>', globalStyleRule);
+          
+          // 安全なスタイル挿入（</style> が存在しない場合でも末尾に追加して壊さない）
+          if (rawHtml.includes('</style>')) {
+            rawHtml = rawHtml.replace('</style>', globalStyleRule);
+          } else {
+            rawHtml += `<style>${globalStyleRule}`;
+          }
 
           // === 安全な自動IDスキャンと変数割り当てコードの生成 ===
           const idMatches = [...rawHtml.matchAll(/id=["']([^"']+)["']/g)].map(m => m[1]);
@@ -42,8 +48,7 @@ jobs:
 
           let autoElementDeclarations = [];
           uniqueIds.forEach(id => {
-            // クラッシュを防ぐため安全に要素を取得するコードを動的生成
-            autoElementDeclarations.push(`this.${id} = sr.getElementById('${id}');`);
+            autoElementDeclarations.push(`this.${id} = sr.getElementById('${id}') || null;`);
           });
 
           const widgetScript = `(function() {
@@ -82,6 +87,12 @@ jobs:
                 this.currentFetchedData = { weather: "--", temp: "--", pressure: "--", wind: "--", uv: "--", pollen: "--" };
               }
 
+              // 安全にDOMのテキストを変更するヘルパー関数
+              safeSetText(id, text) {
+                const el = this.shadowRoot.getElementById(id);
+                if (el) el.innerText = text;
+              }
+
               connectedCallback() {
                 this.render();
                 this.initElements();
@@ -110,9 +121,7 @@ jobs:
 
               initElements() {
                 const sr = this.shadowRoot;
-                // --- HTMLから自動検出されたIDを変数に自動割り当て ---
                 ${autoElementDeclarations.join('\n                ')}
-
                 this.initEvents();
               }
 
@@ -130,9 +139,9 @@ jobs:
                 });
 
                 this.clearInputBtn?.addEventListener('click', () => {
-                  this.searchInput.value = '';
-                  this.clearInputBtn.style.display = 'none';
-                  this.searchInput.focus();
+                  if (this.searchInput) this.searchInput.value = '';
+                  if (this.clearInputBtn) this.clearInputBtn.style.display = 'none';
+                  this.searchInput?.focus();
                 });
 
                 this.selectTrigger?.addEventListener('click', (e) => {
@@ -252,7 +261,7 @@ jobs:
                   optionDiv.addEventListener('click', () => {
                     this.selectedLocation = loc;
                     this.renderCustomSelect();
-                    this.selectOptions.classList.remove('open');
+                    this.selectOptions?.classList.remove('open');
                     this.fetchWeatherData(this.selectedLocation);
                   });
 
@@ -323,9 +332,7 @@ jobs:
                 const query = this.searchInput.value.trim();
                 if (!query) return;
 
-                const sr = this.shadowRoot;
-                const weatherTelopEl = sr.getElementById('weatherTelop');
-                if (weatherTelopEl) weatherTelopEl.innerText = '検索中...';
+                this.safeSetText('weatherTelop', '検索中...');
 
                 try {
                   const geoUrl = \`https://geocoding-api.open-meteo.com/v1/search?name=\${encodeURIComponent(query)}&count=5&language=ja&format=json\`;
@@ -342,7 +349,7 @@ jobs:
 
                   if (!place) {
                     alert('該当する場所が見つかりませんでした');
-                    if (weatherTelopEl) weatherTelopEl.innerText = '検索失敗';
+                    this.safeSetText('weatherTelop', '検索失敗');
                     return;
                   }
 
@@ -366,14 +373,12 @@ jobs:
               }
 
               executeGpsFetch(isInteractive = false) {
-                const sr = this.shadowRoot;
                 if (!navigator.geolocation) {
                   this.handleGpsError();
                   return;
                 }
 
-                const weatherTelopEl = sr.getElementById('weatherTelop');
-                if (weatherTelopEl) weatherTelopEl.innerText = '現在地を取得中...';
+                this.safeSetText('weatherTelop', '現在地を取得中...');
 
                 const gpsTimeout = setTimeout(() => {
                   this.handleGpsError();
@@ -428,18 +433,16 @@ jobs:
                 const sr = this.shadowRoot;
                 const loadingImg = sr.getElementById('loadingImg');
                 const weatherImg = sr.getElementById('weatherImg');
-                const weatherTelop = sr.getElementById('weatherTelop');
-                const displayLocationName = sr.getElementById('displayLocationName');
 
                 if (loadingImg) loadingImg.style.display = 'inline';
                 if (weatherImg) weatherImg.style.display = 'none';
-                if (weatherTelop) weatherTelop.innerText = '通信中...';
+                this.safeSetText('weatherTelop', '通信中...');
 
                 let displayName = \`[ \${locationData.name} ]\`;
                 if (locationData.name === "現在地" && locationData.subName) {
                   displayName = \`[ 現在地 : \${locationData.subName} ]\`;
                 }
-                if (displayLocationName) displayLocationName.innerText = displayName;
+                this.safeSetText('displayLocationName', displayName);
 
                 try {
                   const jmaUrl = \`https://www.jma.go.jp/bosai/forecast/data/forecast/\${locationData.jmaFile}.json\`;
@@ -466,12 +469,12 @@ jobs:
                   const birchPollen = pollenRes?.current?.birch_pollen ?? 0;
                   const pollenText = birchPollen > 0 ? \`\${birchPollen} (飛散中)\` : '少ない/無';
 
-                  if (weatherTelop) weatherTelop.innerText = jmaWeatherTelop;
-                  if (sr.getElementById('tempDisplay')) sr.getElementById('tempDisplay').innerText = \`\${currentTemp} ℃\`;
-                  if (sr.getElementById('windSpeed')) sr.getElementById('windSpeed').innerText = windSpeed;
-                  if (sr.getElementById('uvIndex')) sr.getElementById('uvIndex').innerText = uvIndex;
-                  if (sr.getElementById('pressureDisplay')) sr.getElementById('pressureDisplay').innerText = pressure;
-                  if (sr.getElementById('pollenIndex')) sr.getElementById('pollenIndex').innerText = pollenText;
+                  this.safeSetText('weatherTelop', jmaWeatherTelop);
+                  this.safeSetText('tempDisplay', \`\${currentTemp} ℃\`);
+                  this.safeSetText('windSpeed', windSpeed);
+                  this.safeSetText('uvIndex', uvIndex);
+                  this.safeSetText('pressureDisplay', pressure);
+                  this.safeSetText('pollenIndex', pollenText);
 
                   this.currentFetchedData = { weather: jmaWeatherTelop, temp: currentTemp, pressure: pressure, wind: windSpeed, uv: uvIndex, pollen: pollenText };
 
@@ -485,7 +488,7 @@ jobs:
 
                 } catch (error) {
                   console.error('Fetch Error:', error);
-                  if (weatherTelop) weatherTelop.innerText = 'データ取得失敗';
+                  this.safeSetText('weatherTelop', 'データ取得失敗');
                 }
               }
 
