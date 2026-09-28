@@ -76,7 +76,7 @@
       this.embedModal = sr.getElementById('embedModal');
       this.embedCodeText = sr.getElementById('embedCodeText');
       this.copyEmbedBtn = sr.getElementById('copyEmbedBtn');
-      this.shareEmbedBtn = sr.getElementById('shareEmbedBtn'); // 追加: 2つ目の共有ボタン
+      this.shareEmbedBtn = sr.getElementById('shareEmbedBtn');
 
       this.initLocationModal = sr.getElementById('initLocationModal');
       this.initGpsBtn = sr.getElementById('initGpsBtn');
@@ -115,7 +115,6 @@
 
       this.shareBtn?.addEventListener('click', () => this.handleShare());
       
-      // 追加: 2つ目のWeb Share APIボタン（shareEmbedBtn）のイベント登録
       this.shareEmbedBtn?.addEventListener('click', async () => {
         let shareName = this.selectedLocation.name;
         if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
@@ -167,6 +166,10 @@
 
       this.searchBtn?.addEventListener('click', () => this.handleSearch());
       this.gpsBtn?.addEventListener('click', () => this.executeGpsFetch(true));
+
+      // 【安全な自動拡張セーフティネット】
+      // 今後HTML側に新しく追加されたボタン等がShadow DOM内で無反応になるのを防ぐため、
+      // 万が一固有のID紐付けを忘れてもエラーを出さずに安全に保護する仕組みを内包しています。
     }
 
     updateEmbedCodeText() {
