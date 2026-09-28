@@ -36,6 +36,16 @@ jobs:
           const globalStyleRule = '\n:host, *, button, input, select, textarea, div, span { font-family: "DotGothic16", sans-serif !important; }\n:host { color: #00ffcc !important; }\n#weatherTelop { color: #00ffcc !important; }\n</style>';
           rawHtml = rawHtml.replace('</style>', globalStyleRule);
 
+          // === 安全な自動IDスキャンと変数割り当てコードの生成 ===
+          const idMatches = [...rawHtml.matchAll(/id=["']([^"']+)["']/g)].map(m => m[1]);
+          const uniqueIds = [...new Set(idMatches)];
+
+          let autoElementDeclarations = [];
+          uniqueIds.forEach(id => {
+            // クラッシュを防ぐため安全に要素を取得するコードを動的生成
+            autoElementDeclarations.push(`this.${id} = sr.getElementById('${id}');`);
+          });
+
           const widgetScript = `(function() {
             if (!document.querySelector('link[href*="DotGothic16"]')) {
               const fontLink = document.createElement('link');
@@ -100,27 +110,8 @@ jobs:
 
               initElements() {
                 const sr = this.shadowRoot;
-                this.selectTrigger = sr.getElementById('selectTrigger');
-                this.selectOptions = sr.getElementById('selectOptions');
-                this.selectedText = sr.getElementById('selectedText');
-                this.gpsBtn = sr.getElementById('gpsBtn');
-                this.searchBtn = sr.getElementById('searchBtn');
-                this.searchInput = sr.getElementById('searchInput');
-                this.clearInputBtn = sr.getElementById('clearInputBtn');
-                this.shareBtn = sr.getElementById('shareBtn');
-
-                this.openEmbedModal = sr.getElementById('openEmbedModal');
-                this.closeEmbedModal = sr.getElementById('closeEmbedModal');
-                this.embedModal = sr.getElementById('embedModal');
-                this.embedCodeText = sr.getElementById('embedCodeText');
-                this.copyEmbedBtn = sr.getElementById('copyEmbedBtn');
-                this.shareEmbedBtn = sr.getElementById('shareEmbedBtn');
-
-                this.initLocationModal = sr.getElementById('initLocationModal');
-                this.initGpsBtn = sr.getElementById('initGpsBtn');
-                this.initGpsBtnText = sr.getElementById('initGpsBtnText');
-                this.initCancelBtn = sr.getElementById('initCancelBtn');
-                this.initModalNotice = sr.getElementById('initModalNotice');
+                // --- HTMLから自動検出されたIDを変数に自動割り当て ---
+                ${autoElementDeclarations.join('\n                ')}
 
                 this.initEvents();
               }
@@ -577,5 +568,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add weather_widget.js
-          git commit -m "Revert fully to stable working state" || echo "No changes to commit"
+          git commit -m "Auto sync: Build widget with safe dynamic ID scanning" || echo "No changes to commit"
           git push
