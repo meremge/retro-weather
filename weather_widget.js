@@ -62,39 +62,27 @@
 
     initElements() {
       const sr = this.shadowRoot;
-      // --- ビルド時にHTMLから自動スキャンされた要素の自動割り当て ---
+      this.selectTrigger = sr.getElementById('selectTrigger');
+      this.selectOptions = sr.getElementById('selectOptions');
+      this.selectedText = sr.getElementById('selectedText');
+      this.gpsBtn = sr.getElementById('gpsBtn');
+      this.searchBtn = sr.getElementById('searchBtn');
+      this.searchInput = sr.getElementById('searchInput');
+      this.clearInputBtn = sr.getElementById('clearInputBtn');
       this.shareBtn = sr.getElementById('shareBtn');
-                this.selectTrigger = sr.getElementById('selectTrigger');
-                this.selectedText = sr.getElementById('selectedText');
-                this.selectOptions = sr.getElementById('selectOptions');
-                this.gpsBtn = sr.getElementById('gpsBtn');
-                this.searchInput = sr.getElementById('searchInput');
-                this.clearInputBtn = sr.getElementById('clearInputBtn');
-                this.searchBtn = sr.getElementById('searchBtn');
-                this.displayLocationName = sr.getElementById('displayLocationName');
-                this.weatherImg = sr.getElementById('weatherImg');
-                this.loadingImg = sr.getElementById('loadingImg');
-                this.weatherTelop = sr.getElementById('weatherTelop');
-                this.tempDisplay = sr.getElementById('tempDisplay');
-                this.pressureDisplay = sr.getElementById('pressureDisplay');
-                this.pressureIcon = sr.getElementById('pressureIcon');
-                this.pressureAlert = sr.getElementById('pressureAlert');
-                this.windSpeed = sr.getElementById('windSpeed');
-                this.uvIndex = sr.getElementById('uvIndex');
-                this.pollenIndex = sr.getElementById('pollenIndex');
-                this.openEmbedModal = sr.getElementById('openEmbedModal');
-                this.initLocationModal = sr.getElementById('initLocationModal');
-                this.initModalDesc = sr.getElementById('initModalDesc');
-                this.initModalNotice = sr.getElementById('initModalNotice');
-                this.initGpsBtn = sr.getElementById('initGpsBtn');
-                this.initGpsBtnText = sr.getElementById('initGpsBtnText');
-                this.initCancelBtn = sr.getElementById('initCancelBtn');
-                this.embedModal = sr.getElementById('embedModal');
-                this.embedCodeText = sr.getElementById('embedCodeText');
-                this.copyEmbedBtn = sr.getElementById('copyEmbedBtn');
-                this.shareEmbedBtn = sr.getElementById('shareEmbedBtn');
-                this.closeEmbedModal = sr.getElementById('closeEmbedModal');
-                this.retro-weather-widget = sr.getElementById('retro-weather-widget');
+
+      this.openEmbedModal = sr.getElementById('openEmbedModal');
+      this.closeEmbedModal = sr.getElementById('closeEmbedModal');
+      this.embedModal = sr.getElementById('embedModal');
+      this.embedCodeText = sr.getElementById('embedCodeText');
+      this.copyEmbedBtn = sr.getElementById('copyEmbedBtn');
+      this.shareEmbedBtn = sr.getElementById('shareEmbedBtn');
+
+      this.initLocationModal = sr.getElementById('initLocationModal');
+      this.initGpsBtn = sr.getElementById('initGpsBtn');
+      this.initGpsBtnText = sr.getElementById('initGpsBtnText');
+      this.initCancelBtn = sr.getElementById('initCancelBtn');
+      this.initModalNotice = sr.getElementById('initModalNotice');
 
       this.initEvents();
     }
@@ -450,7 +438,7 @@
         const pollenText = birchPollen > 0 ? `${birchPollen} (飛散中)` : '少ない/無';
 
         if (weatherTelop) weatherTelop.innerText = jmaWeatherTelop;
-        if (sr.getElementById('tempDisplay')) sr.getElementById('tempDisplay'].innerText = `${currentTemp} ℃`;
+        if (sr.getElementById('tempDisplay')) sr.getElementById('tempDisplay').innerText = `${currentTemp} ℃`;
         if (sr.getElementById('windSpeed')) sr.getElementById('windSpeed').innerText = windSpeed;
         if (sr.getElementById('uvIndex')) sr.getElementById('uvIndex').innerText = uvIndex;
         if (sr.getElementById('pressureDisplay')) sr.getElementById('pressureDisplay').innerText = pressure;
