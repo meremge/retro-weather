@@ -76,6 +76,7 @@
       this.embedModal = sr.getElementById('embedModal');
       this.embedCodeText = sr.getElementById('embedCodeText');
       this.copyEmbedBtn = sr.getElementById('copyEmbedBtn');
+      this.shareEmbedBtn = sr.getElementById('shareEmbedBtn'); // 追加: 2つ目の共有ボタン
 
       this.initLocationModal = sr.getElementById('initLocationModal');
       this.initGpsBtn = sr.getElementById('initGpsBtn');
@@ -113,6 +114,34 @@
       this.shadowRoot.addEventListener('click', () => this.selectOptions?.classList.remove('open'));
 
       this.shareBtn?.addEventListener('click', () => this.handleShare());
+      
+      // 追加: 2つ目のWeb Share APIボタン（shareEmbedBtn）のイベント登録
+      this.shareEmbedBtn?.addEventListener('click', async () => {
+        let shareName = this.selectedLocation.name;
+        if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
+          shareName = this.selectedLocation.subName;
+        }
+        const embedCodeValue = this.embedCodeText ? (this.embedCodeText.value || this.embedCodeText.innerText) : '';
+        const shareText = `【${shareName}の埋め込みコード】\n\n${embedCodeValue}`;
+
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: `${shareName}の埋め込みコード`,
+              text: shareText
+            });
+          } catch (err) {
+            console.log('共有キャンセル:', err);
+          }
+        } else {
+          try {
+            await navigator.clipboard.writeText(shareText);
+            alert(`埋め込みコードをコピーしました！\n\n${shareText}`);
+          } catch (err) {
+            prompt('以下のテキストをコピーしてください:', shareText);
+          }
+        }
+      });
 
       this.openEmbedModal?.addEventListener('click', () => {
         this.updateEmbedCodeText();
@@ -141,7 +170,12 @@
     }
 
     updateEmbedCodeText() {
-      const scriptUrl = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/weather_widget.js`;
+      let locName = this.selectedLocation.name;
+      if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
+        locName = this.selectedLocation.subName;
+      }
+      const query = `?lat=${this.selectedLocation.lat}&lon=${this.selectedLocation.lon}&name=${encodeURIComponent(locName)}`;
+      const scriptUrl = `https://${GITHUB_USERNAME}.github.io/${GITHUB_REPO}/weather_widget.js${query}`;
       const embedCode = `<div id="retro-weather-widget"></div>\n<script src="${scriptUrl}" defer></script>`;
 
       if (this.embedCodeText) {
