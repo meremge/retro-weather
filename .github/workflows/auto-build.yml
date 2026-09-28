@@ -35,7 +35,6 @@ jobs:
           }
 
           // 2. 全要素および動的生成要素へのフォント・カラーの強制的カプセル化ルール
-          // ※文字色やフォントが途中で剥がれないよう、ここで完全に共通保証します
           const globalStyleRule = '\n:host, *, button, input, select, textarea, div, span { font-family: "DotGothic16", sans-serif !important; }\n:host { color: #00ffcc !important; }\n#weatherTelop { color: #00ffcc !important; }\n</style>';
           rawHtml = rawHtml.replace('</style>', globalStyleRule);
 
@@ -117,6 +116,7 @@ jobs:
                 this.embedModal = sr.getElementById('embedModal');
                 this.embedCodeText = sr.getElementById('embedCodeText');
                 this.copyEmbedBtn = sr.getElementById('copyEmbedBtn');
+                this.shareEmbedBtn = sr.getElementById('shareEmbedBtn'); // 追加: 2つ目の共有ボタン
 
                 this.initLocationModal = sr.getElementById('initLocationModal');
                 this.initGpsBtn = sr.getElementById('initGpsBtn');
@@ -154,6 +154,34 @@ jobs:
                 this.shadowRoot.addEventListener('click', () => this.selectOptions?.classList.remove('open'));
 
                 this.shareBtn?.addEventListener('click', () => this.handleShare());
+                
+                // 追加: 2つ目のWeb Share APIボタン（shareEmbedBtn）のイベント登録
+                this.shareEmbedBtn?.addEventListener('click', async () => {
+                  let shareName = this.selectedLocation.name;
+                  if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
+                    shareName = this.selectedLocation.subName;
+                  }
+                  const embedCodeValue = this.embedCodeText ? (this.embedCodeText.value || this.embedCodeText.innerText) : '';
+                  const shareText = \`【\${shareName}の埋め込みコード】\\n\\n\${embedCodeValue}\`;
+
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({
+                        title: \`\${shareName}の埋め込みコード\`,
+                        text: shareText
+                      });
+                    } catch (err) {
+                      console.log('共有キャンセル:', err);
+                    }
+                  } else {
+                    try {
+                      await navigator.clipboard.writeText(shareText);
+                      alert(\`埋め込みコードをコピーしました！\\n\\n\${shareText}\`);
+                    } catch (err) {
+                      prompt('以下のテキストをコピーしてください:', shareText);
+                    }
+                  }
+                });
 
                 this.openEmbedModal?.addEventListener('click', () => {
                   this.updateEmbedCodeText();
@@ -182,7 +210,12 @@ jobs:
               }
 
               updateEmbedCodeText() {
-                const scriptUrl = \`https://\${GITHUB_USERNAME}.github.io/\${GITHUB_REPO}/weather_widget.js\`;
+                let locName = this.selectedLocation.name;
+                if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
+                  locName = this.selectedLocation.subName;
+                }
+                const query = \`?lat=\${this.selectedLocation.lat}&lon=\${this.selectedLocation.lon}&name=\${encodeURIComponent(locName)}\`;
+                const scriptUrl = \`https://\${GITHUB_USERNAME}.github.io/\${GITHUB_REPO}/weather_widget.js\${query}\`;
                 const embedCode = \`<div id="retro-weather-widget"></div>\\n<script src="\${scriptUrl}" defer></script>\`;
 
                 if (this.embedCodeText) {
@@ -547,5 +580,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add weather_widget.js
-          git commit -m "Auto-generate robust weather_widget.js with full font and color inheritance" || echo "No changes to commit"
+          git commit -m "Fix: Add event listener for shareEmbedBtn inside Shadow DOM" || echo "No changes to commit"
           git push
