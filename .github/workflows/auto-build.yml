@@ -28,19 +28,15 @@ jobs:
 
           let rawHtml = fs.readFileSync('RETRO_WEATHER.html', 'utf8');
 
+          // フォントタグのチェック
           const fontImport = '<style>@import url("https://fonts.googleapis.com/css2?family=DotGothic16&display=swap");</style>\n';
           if (!rawHtml.includes('DotGothic16')) {
             rawHtml = fontImport + rawHtml;
           }
 
-          const globalStyleRule = '\n:host, *, button, input, select, textarea, div, span { font-family: "DotGothic16", sans-serif !important; }\n:host { color: #00ffcc !important; }\n#weatherTelop { color: #00ffcc !important; }\n</style>';
-          
-          // 安全なスタイル挿入（</style> が存在しない場合でも末尾に追加して壊さない）
-          if (rawHtml.includes('</style>')) {
-            rawHtml = rawHtml.replace('</style>', globalStyleRule);
-          } else {
-            rawHtml += `<style>${globalStyleRule}`;
-          }
+          // HTML構造を壊さないよう、末尾に安全にスタイルを追加
+          const globalStyleRule = '<style>:host, *, button, input, select, textarea, div, span { font-family: "DotGothic16", sans-serif !important; } :host, #weatherTelop { color: #00ffcc !important; }</style>';
+          rawHtml = rawHtml + '\n' + globalStyleRule;
 
           // === 安全な自動IDスキャンと変数割り当てコードの生成 ===
           const idMatches = [...rawHtml.matchAll(/id=["']([^"']+)["']/g)].map(m => m[1]);
@@ -48,7 +44,7 @@ jobs:
 
           let autoElementDeclarations = [];
           uniqueIds.forEach(id => {
-            autoElementDeclarations.push(`this.${id} = sr.getElementById('${id}') || null;`);
+            autoElementDeclarations.push(`this.${id} = sr ? sr.getElementById('${id}') : null;`);
           });
 
           const widgetScript = `(function() {
@@ -87,10 +83,14 @@ jobs:
                 this.currentFetchedData = { weather: "--", temp: "--", pressure: "--", wind: "--", uv: "--", pollen: "--" };
               }
 
-              // 安全にDOMのテキストを変更するヘルパー関数
+              // 画面描画を絶対に止めない超安全なテキスト設定ヘルパー
               safeSetText(id, text) {
-                const el = this.shadowRoot.getElementById(id);
-                if (el) el.innerText = text;
+                try {
+                  if (this.shadowRoot) {
+                    const el = this.shadowRoot.getElementById(id);
+                    if (el) el.innerText = text;
+                  }
+                } catch (e) {}
               }
 
               connectedCallback() {
@@ -149,7 +149,7 @@ jobs:
                   this.selectOptions?.classList.toggle('open');
                 });
 
-                this.shadowRoot.addEventListener('click', () => this.selectOptions?.classList.remove('open'));
+                this.shadowRoot?.addEventListener('click', () => this.selectOptions?.classList.remove('open'));
 
                 this.shareBtn?.addEventListener('click', () => this.handleShare());
                 
@@ -430,21 +430,21 @@ jobs:
               }
 
               async fetchWeatherData(locationData) {
-                const sr = this.shadowRoot;
-                const loadingImg = sr.getElementById('loadingImg');
-                const weatherImg = sr.getElementById('weatherImg');
-
-                if (loadingImg) loadingImg.style.display = 'inline';
-                if (weatherImg) weatherImg.style.display = 'none';
-                this.safeSetText('weatherTelop', '通信中...');
-
-                let displayName = \`[ \${locationData.name} ]\`;
-                if (locationData.name === "現在地" && locationData.subName) {
-                  displayName = \`[ 現在地 : \${locationData.subName} ]\`;
-                }
-                this.safeSetText('displayLocationName', displayName);
-
                 try {
+                  const sr = this.shadowRoot;
+                  const loadingImg = sr ? sr.getElementById('loadingImg') : null;
+                  const weatherImg = sr ? sr.getElementById('weatherImg') : null;
+
+                  if (loadingImg) loadingImg.style.display = 'inline';
+                  if (weatherImg) weatherImg.style.display = 'none';
+                  this.safeSetText('weatherTelop', '通信中...');
+
+                  let displayName = \`[ \${locationData.name} ]\`;
+                  if (locationData.name === "現在地" && locationData.subName) {
+                    displayName = \`[ 現在地 : \${locationData.subName} ]\`;
+                  }
+                  this.safeSetText('displayLocationName', displayName);
+
                   const jmaUrl = \`https://www.jma.go.jp/bosai/forecast/data/forecast/\${locationData.jmaFile}.json\`;
                   const openMeteoUrl = \`https://api.open-meteo.com/v1/forecast?latitude=\${locationData.lat}&longitude=\${locationData.lon}&current=temperature_2m,wind_speed_10m,uv_index,surface_pressure&timezone=Asia%2FTokyo\`;
                   const pollenUrl = \`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=\${locationData.lat}&longitude=\${locationData.lon}&current=birch_pollen&timezone=Asia%2FTokyo\`;
@@ -462,10 +462,10 @@ jobs:
                     jmaWeatherTelop = targetArea.weathers[0];
                   }
 
-                  const currentTemp = openMeteoRes.current.temperature_2m;
-                  const windSpeed = openMeteoRes.current.wind_speed_10m;
-                  const uvIndex = openMeteoRes.current.uv_index;
-                  const pressure = openMeteoRes.current.surface_pressure;
+                  const currentTemp = openMeteoRes?.current?.temperature_2m ?? "--";
+                  const windSpeed = openMeteoRes?.current?.wind_speed_10m ?? "--";
+                  const uvIndex = openMeteoRes?.current?.uv_index ?? "--";
+                  const pressure = openMeteoRes?.current?.surface_pressure ?? "--";
                   const birchPollen = pollenRes?.current?.birch_pollen ?? 0;
                   const pollenText = birchPollen > 0 ? \`\${birchPollen} (飛散中)\` : '少ない/無';
 
@@ -478,7 +478,9 @@ jobs:
 
                   this.currentFetchedData = { weather: jmaWeatherTelop, temp: currentTemp, pressure: pressure, wind: windSpeed, uv: uvIndex, pollen: pollenText };
 
-                  this.evaluatePressure(pressure);
+                  if (typeof pressure === 'number') {
+                    this.evaluatePressure(pressure);
+                  }
 
                   if (weatherImg) {
                     weatherImg.src = this.getPixelIconUrl(jmaWeatherTelop);
@@ -493,21 +495,24 @@ jobs:
               }
 
               evaluatePressure(pressure) {
-                const sr = this.shadowRoot;
-                const alertEl = sr.getElementById('pressureAlert');
-                const iconEl = sr.getElementById('pressureIcon');
-                if (iconEl) iconEl.style.display = 'inline-block';
+                try {
+                  const sr = this.shadowRoot;
+                  if (!sr) return;
+                  const alertEl = sr.getElementById('pressureAlert');
+                  const iconEl = sr.getElementById('pressureIcon');
+                  if (iconEl) iconEl.style.display = 'inline-block';
 
-                if (pressure < 1005) {
-                  if (alertEl) { alertEl.innerText = '低気圧警戒！無理せず休もう'; alertEl.style.color = '#ff3366'; }
-                  if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a0.png';
-                } else if (pressure < 1010) {
-                  if (alertEl) { alertEl.innerText = 'やや低気圧：頭痛・倦怠感注意'; alertEl.style.color = '#ff9900'; }
-                  if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a1.png';
-                } else {
-                  if (alertEl) { alertEl.innerText = '気圧安定：快適コンディション'; alertEl.style.color = '#00ffcc'; }
-                  if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2728.png';
-                }
+                  if (pressure < 1005) {
+                    if (alertEl) { alertEl.innerText = '低気圧警戒！無理せず休もう'; alertEl.style.color = '#ff3366'; }
+                    if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a0.png';
+                  } else if (pressure < 1010) {
+                    if (alertEl) { alertEl.innerText = 'やや低気圧：頭痛・倦怠感注意'; alertEl.style.color = '#ff9900'; }
+                    if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a1.png';
+                  } else {
+                    if (alertEl) { alertEl.innerText = '気圧安定：快適コンディション'; alertEl.style.color = '#00ffcc'; }
+                    if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2728.png';
+                  }
+                } catch (e) {}
               }
 
               getPixelIconUrl(telop) {
