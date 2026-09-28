@@ -34,6 +34,12 @@
       this.currentFetchedData = { weather: "--", temp: "--", pressure: "--", wind: "--", uv: "--", pollen: "--" };
     }
 
+    // 安全にDOMのテキストを変更するヘルパー関数
+    safeSetText(id, text) {
+      const el = this.shadowRoot.getElementById(id);
+      if (el) el.innerText = text;
+    }
+
     connectedCallback() {
       this.render();
       this.initElements();
@@ -62,41 +68,39 @@
 
     initElements() {
       const sr = this.shadowRoot;
-      // --- HTMLから自動検出されたIDを変数に自動割り当て ---
-      this.testBtn = sr.getElementById('testBtn');
-                this.shareBtn = sr.getElementById('shareBtn');
-                this.selectTrigger = sr.getElementById('selectTrigger');
-                this.selectedText = sr.getElementById('selectedText');
-                this.selectOptions = sr.getElementById('selectOptions');
-                this.gpsBtn = sr.getElementById('gpsBtn');
-                this.searchInput = sr.getElementById('searchInput');
-                this.clearInputBtn = sr.getElementById('clearInputBtn');
-                this.searchBtn = sr.getElementById('searchBtn');
-                this.displayLocationName = sr.getElementById('displayLocationName');
-                this.weatherImg = sr.getElementById('weatherImg');
-                this.loadingImg = sr.getElementById('loadingImg');
-                this.weatherTelop = sr.getElementById('weatherTelop');
-                this.tempDisplay = sr.getElementById('tempDisplay');
-                this.pressureDisplay = sr.getElementById('pressureDisplay');
-                this.pressureIcon = sr.getElementById('pressureIcon');
-                this.pressureAlert = sr.getElementById('pressureAlert');
-                this.windSpeed = sr.getElementById('windSpeed');
-                this.uvIndex = sr.getElementById('uvIndex');
-                this.pollenIndex = sr.getElementById('pollenIndex');
-                this.openEmbedModal = sr.getElementById('openEmbedModal');
-                this.initLocationModal = sr.getElementById('initLocationModal');
-                this.initModalDesc = sr.getElementById('initModalDesc');
-                this.initModalNotice = sr.getElementById('initModalNotice');
-                this.initGpsBtn = sr.getElementById('initGpsBtn');
-                this.initGpsBtnText = sr.getElementById('initGpsBtnText');
-                this.initCancelBtn = sr.getElementById('initCancelBtn');
-                this.embedModal = sr.getElementById('embedModal');
-                this.embedCodeText = sr.getElementById('embedCodeText');
-                this.copyEmbedBtn = sr.getElementById('copyEmbedBtn');
-                this.shareEmbedBtn = sr.getElementById('shareEmbedBtn');
-                this.closeEmbedModal = sr.getElementById('closeEmbedModal');
-                this.retro-weather-widget = sr.getElementById('retro-weather-widget');
-
+      this.testBtn = sr.getElementById('testBtn') || null;
+                this.shareBtn = sr.getElementById('shareBtn') || null;
+                this.selectTrigger = sr.getElementById('selectTrigger') || null;
+                this.selectedText = sr.getElementById('selectedText') || null;
+                this.selectOptions = sr.getElementById('selectOptions') || null;
+                this.gpsBtn = sr.getElementById('gpsBtn') || null;
+                this.searchInput = sr.getElementById('searchInput') || null;
+                this.clearInputBtn = sr.getElementById('clearInputBtn') || null;
+                this.searchBtn = sr.getElementById('searchBtn') || null;
+                this.displayLocationName = sr.getElementById('displayLocationName') || null;
+                this.weatherImg = sr.getElementById('weatherImg') || null;
+                this.loadingImg = sr.getElementById('loadingImg') || null;
+                this.weatherTelop = sr.getElementById('weatherTelop') || null;
+                this.tempDisplay = sr.getElementById('tempDisplay') || null;
+                this.pressureDisplay = sr.getElementById('pressureDisplay') || null;
+                this.pressureIcon = sr.getElementById('pressureIcon') || null;
+                this.pressureAlert = sr.getElementById('pressureAlert') || null;
+                this.windSpeed = sr.getElementById('windSpeed') || null;
+                this.uvIndex = sr.getElementById('uvIndex') || null;
+                this.pollenIndex = sr.getElementById('pollenIndex') || null;
+                this.openEmbedModal = sr.getElementById('openEmbedModal') || null;
+                this.initLocationModal = sr.getElementById('initLocationModal') || null;
+                this.initModalDesc = sr.getElementById('initModalDesc') || null;
+                this.initModalNotice = sr.getElementById('initModalNotice') || null;
+                this.initGpsBtn = sr.getElementById('initGpsBtn') || null;
+                this.initGpsBtnText = sr.getElementById('initGpsBtnText') || null;
+                this.initCancelBtn = sr.getElementById('initCancelBtn') || null;
+                this.embedModal = sr.getElementById('embedModal') || null;
+                this.embedCodeText = sr.getElementById('embedCodeText') || null;
+                this.copyEmbedBtn = sr.getElementById('copyEmbedBtn') || null;
+                this.shareEmbedBtn = sr.getElementById('shareEmbedBtn') || null;
+                this.closeEmbedModal = sr.getElementById('closeEmbedModal') || null;
+                this.retro-weather-widget = sr.getElementById('retro-weather-widget') || null;
       this.initEvents();
     }
 
@@ -114,9 +118,9 @@
       });
 
       this.clearInputBtn?.addEventListener('click', () => {
-        this.searchInput.value = '';
-        this.clearInputBtn.style.display = 'none';
-        this.searchInput.focus();
+        if (this.searchInput) this.searchInput.value = '';
+        if (this.clearInputBtn) this.clearInputBtn.style.display = 'none';
+        this.searchInput?.focus();
       });
 
       this.selectTrigger?.addEventListener('click', (e) => {
@@ -236,7 +240,7 @@
         optionDiv.addEventListener('click', () => {
           this.selectedLocation = loc;
           this.renderCustomSelect();
-          this.selectOptions.classList.remove('open');
+          this.selectOptions?.classList.remove('open');
           this.fetchWeatherData(this.selectedLocation);
         });
 
@@ -307,9 +311,7 @@
       const query = this.searchInput.value.trim();
       if (!query) return;
 
-      const sr = this.shadowRoot;
-      const weatherTelopEl = sr.getElementById('weatherTelop');
-      if (weatherTelopEl) weatherTelopEl.innerText = '検索中...';
+      this.safeSetText('weatherTelop', '検索中...');
 
       try {
         const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=ja&format=json`;
@@ -326,7 +328,7 @@
 
         if (!place) {
           alert('該当する場所が見つかりませんでした');
-          if (weatherTelopEl) weatherTelopEl.innerText = '検索失敗';
+          this.safeSetText('weatherTelop', '検索失敗');
           return;
         }
 
@@ -350,14 +352,12 @@
     }
 
     executeGpsFetch(isInteractive = false) {
-      const sr = this.shadowRoot;
       if (!navigator.geolocation) {
         this.handleGpsError();
         return;
       }
 
-      const weatherTelopEl = sr.getElementById('weatherTelop');
-      if (weatherTelopEl) weatherTelopEl.innerText = '現在地を取得中...';
+      this.safeSetText('weatherTelop', '現在地を取得中...');
 
       const gpsTimeout = setTimeout(() => {
         this.handleGpsError();
@@ -412,18 +412,16 @@
       const sr = this.shadowRoot;
       const loadingImg = sr.getElementById('loadingImg');
       const weatherImg = sr.getElementById('weatherImg');
-      const weatherTelop = sr.getElementById('weatherTelop');
-      const displayLocationName = sr.getElementById('displayLocationName');
 
       if (loadingImg) loadingImg.style.display = 'inline';
       if (weatherImg) weatherImg.style.display = 'none';
-      if (weatherTelop) weatherTelop.innerText = '通信中...';
+      this.safeSetText('weatherTelop', '通信中...');
 
       let displayName = `[ ${locationData.name} ]`;
       if (locationData.name === "現在地" && locationData.subName) {
         displayName = `[ 現在地 : ${locationData.subName} ]`;
       }
-      if (displayLocationName) displayLocationName.innerText = displayName;
+      this.safeSetText('displayLocationName', displayName);
 
       try {
         const jmaUrl = `https://www.jma.go.jp/bosai/forecast/data/forecast/${locationData.jmaFile}.json`;
@@ -450,12 +448,12 @@
         const birchPollen = pollenRes?.current?.birch_pollen ?? 0;
         const pollenText = birchPollen > 0 ? `${birchPollen} (飛散中)` : '少ない/無';
 
-        if (weatherTelop) weatherTelop.innerText = jmaWeatherTelop;
-        if (sr.getElementById('tempDisplay')) sr.getElementById('tempDisplay').innerText = `${currentTemp} ℃`;
-        if (sr.getElementById('windSpeed')) sr.getElementById('windSpeed').innerText = windSpeed;
-        if (sr.getElementById('uvIndex')) sr.getElementById('uvIndex').innerText = uvIndex;
-        if (sr.getElementById('pressureDisplay')) sr.getElementById('pressureDisplay').innerText = pressure;
-        if (sr.getElementById('pollenIndex')) sr.getElementById('pollenIndex').innerText = pollenText;
+        this.safeSetText('weatherTelop', jmaWeatherTelop);
+        this.safeSetText('tempDisplay', `${currentTemp} ℃`);
+        this.safeSetText('windSpeed', windSpeed);
+        this.safeSetText('uvIndex', uvIndex);
+        this.safeSetText('pressureDisplay', pressure);
+        this.safeSetText('pollenIndex', pollenText);
 
         this.currentFetchedData = { weather: jmaWeatherTelop, temp: currentTemp, pressure: pressure, wind: windSpeed, uv: uvIndex, pollen: pollenText };
 
@@ -469,7 +467,7 @@
 
       } catch (error) {
         console.error('Fetch Error:', error);
-        if (weatherTelop) weatherTelop.innerText = 'データ取得失敗';
+        this.safeSetText('weatherTelop', 'データ取得失敗');
       }
     }
 
