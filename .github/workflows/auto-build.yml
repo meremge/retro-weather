@@ -1,21 +1,15 @@
-name: Auto Build and Deploy Weather Widget
+name: Auto Build Weather Widget
 
 on:
   push:
-    branches: ["main"] # お使いのメインブランチ名（main または master）に合わせてください
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
+    branches: ["main"]
+    paths:
+      - 'RETRO_WEATHER.html'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -579,21 +573,10 @@ jobs:
           EOF
           node build-widget.js
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Commit and Push JS Widget
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add weather_widget.js
+          git commit -m "Auto build: Clean & exact HTML-to-JS compilation" || echo "No changes to commit"
+          git push
