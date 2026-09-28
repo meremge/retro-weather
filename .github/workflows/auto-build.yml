@@ -577,5 +577,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add weather_widget.js
-          git commit -m "Revert to stable working YML configuration" || echo "No changes to commit"
+          git commit -m "Revert fully to stable working state" || echo "No changes to commit"
           git push
