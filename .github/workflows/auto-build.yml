@@ -18,49 +18,32 @@ jobs:
 
       - name: Build JS Widget
         run: |
-          cat << 'EOF' > build-widget.js
-          const fs = require('fs');
+          node -e '
+          const fs = require("fs");
 
-          if (!fs.existsSync('RETRO_WEATHER.html')) {
-            console.error('Error: RETRO_WEATHER.html not found.');
+          if (!fs.existsSync("RETRO_WEATHER.html")) {
+            console.error("Error: RETRO_WEATHER.html not found.");
             process.exit(1);
           }
 
-          let rawHtml = fs.readFileSync('RETRO_WEATHER.html', 'utf8');
-
-          // フォントタグのチェック
-          const fontImport = '<style>@import url("https://fonts.googleapis.com/css2?family=DotGothic16&display=swap");</style>\n';
-          if (!rawHtml.includes('DotGothic16')) {
-            rawHtml = fontImport + rawHtml;
-          }
-
-          // HTML構造を壊さないよう、末尾に安全にスタイルを追加
-          const globalStyleRule = '<style>:host, *, button, input, select, textarea, div, span { font-family: "DotGothic16", sans-serif !important; } :host, #weatherTelop { color: #00ffcc !important; }</style>';
-          rawHtml = rawHtml + '\n' + globalStyleRule;
-
-          // === 安全な自動IDスキャンと変数割り当てコードの生成 ===
-          const idMatches = [...rawHtml.matchAll(/id=["']([^"']+)["']/g)].map(m => m[1]);
-          const uniqueIds = [...new Set(idMatches)];
-
-          let autoElementDeclarations = [];
-          uniqueIds.forEach(id => {
-            autoElementDeclarations.push(`this.${id} = sr ? sr.getElementById('${id}') : null;`);
-          });
+          // HTMLを余計な書き換え（CSS置換やID自動割り当て等）をせずそのまま読み込む
+          const rawHtml = fs.readFileSync("RETRO_WEATHER.html", "utf8");
+          const safeHtmlString = JSON.stringify(rawHtml);
 
           const widgetScript = `(function() {
-            if (!document.querySelector('link[href*="DotGothic16"]')) {
-              const fontLink = document.createElement('link');
-              fontLink.rel = 'stylesheet';
-              fontLink.href = 'https://fonts.googleapis.com/css2?family=DotGothic16&display=swap';
+            if (!document.querySelector("link[href*=\\"DotGothic16\\"]")) {
+              const fontLink = document.createElement("link");
+              fontLink.rel = "stylesheet";
+              fontLink.href = "https://fonts.googleapis.com/css2?family=DotGothic16&display=swap";
               document.head.appendChild(fontLink);
             }
 
             const ICON_GPS = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4e1.png";
             const ICON_PIN = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f4cd.png";
             const ICON_SEARCH = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f50d.png";
-            const STORAGE_KEY = 'retro_weather_custom_cities';
-            const VISITED_KEY = 'retro_weather_visited';
-            const GPS_ALLOWED_KEY = 'retro_weather_gps_allowed';
+            const STORAGE_KEY = "retro_weather_custom_cities";
+            const VISITED_KEY = "retro_weather_visited";
+            const GPS_ALLOWED_KEY = "retro_weather_gps_allowed";
 
             const GITHUB_USERNAME = "meremge"; 
             const GITHUB_REPO = "retro-weather";
@@ -76,14 +59,13 @@ jobs:
             class RetroWeatherWidget extends HTMLElement {
               constructor() {
                 super();
-                this.attachShadow({ mode: 'open' });
+                this.attachShadow({ mode: "open" });
 
                 this.currentLocations = [...defaultPresets];
                 this.selectedLocation = defaultPresets[2];
                 this.currentFetchedData = { weather: "--", temp: "--", pressure: "--", wind: "--", uv: "--", pollen: "--" };
               }
 
-              // 画面描画を絶対に止めない超安全なテキスト設定ヘルパー
               safeSetText(id, text) {
                 try {
                   if (this.shadowRoot) {
@@ -99,11 +81,10 @@ jobs:
                 this.loadSavedLocations();
                 
                 const hasScriptParam = this.checkParams();
-
                 this.renderCustomSelect();
 
                 const hasVisited = localStorage.getItem(VISITED_KEY);
-                const isGpsAllowed = localStorage.getItem(GPS_ALLOWED_KEY) === 'true';
+                const isGpsAllowed = localStorage.getItem(GPS_ALLOWED_KEY) === "true";
 
                 if (hasScriptParam) {
                   this.fetchWeatherData(this.selectedLocation);
@@ -116,94 +97,113 @@ jobs:
               }
 
               render() {
-                this.shadowRoot.innerHTML = ${JSON.stringify(rawHtml)};
+                this.shadowRoot.innerHTML = \${safeHtmlString};
               }
 
               initElements() {
                 const sr = this.shadowRoot;
-                ${autoElementDeclarations.join('\n                ')}
+                if (!sr) return;
+
+                this.searchInput = sr.getElementById("searchInput");
+                this.searchBtn = sr.getElementById("searchBtn");
+                this.clearInputBtn = sr.getElementById("clearInputBtn");
+                this.gpsBtn = sr.getElementById("gpsBtn");
+                this.selectTrigger = sr.getElementById("selectTrigger");
+                this.selectOptions = sr.getElementById("selectOptions");
+                this.selectedText = sr.getElementById("selectedText");
+                this.shareBtn = sr.getElementById("shareBtn");
+                this.openEmbedModal = sr.getElementById("openEmbedModal");
+                this.closeEmbedModal = sr.getElementById("closeEmbedModal");
+                this.embedModal = sr.getElementById("embedModal");
+                this.embedCodeText = sr.getElementById("embedCodeText");
+                this.copyEmbedBtn = sr.getElementById("copyEmbedBtn");
+                this.shareEmbedBtn = sr.getElementById("shareEmbedBtn");
+                this.initLocationModal = sr.getElementById("initLocationModal");
+                this.initGpsBtn = sr.getElementById("initGpsBtn");
+                this.initCancelBtn = sr.getElementById("initCancelBtn");
+                this.initModalNotice = sr.getElementById("initModalNotice");
+                this.initGpsBtnText = sr.getElementById("initGpsBtnText");
+
                 this.initEvents();
               }
 
               initEvents() {
-                this.initGpsBtn?.addEventListener('click', () => this.executeGpsFetch(true));
-                this.initCancelBtn?.addEventListener('click', () => {
-                  localStorage.setItem(VISITED_KEY, 'true');
-                  localStorage.setItem(GPS_ALLOWED_KEY, 'false');
+                this.initGpsBtn?.addEventListener("click", () => this.executeGpsFetch(true));
+                this.initCancelBtn?.addEventListener("click", () => {
+                  localStorage.setItem(VISITED_KEY, "true");
+                  localStorage.setItem(GPS_ALLOWED_KEY, "false");
                   this.closeInitModal();
                   this.fetchWeatherData(this.selectedLocation);
                 });
 
-                this.searchInput?.addEventListener('input', () => {
-                  if (this.clearInputBtn) this.clearInputBtn.style.display = this.searchInput.value ? 'block' : 'none';
+                this.searchInput?.addEventListener("input", () => {
+                  if (this.clearInputBtn) this.clearInputBtn.style.display = this.searchInput.value ? "block" : "none";
                 });
 
-                this.clearInputBtn?.addEventListener('click', () => {
-                  if (this.searchInput) this.searchInput.value = '';
-                  if (this.clearInputBtn) this.clearInputBtn.style.display = 'none';
+                this.clearInputBtn?.addEventListener("click", () => {
+                  if (this.searchInput) this.searchInput.value = "";
+                  if (this.clearInputBtn) this.clearInputBtn.style.display = "none";
                   this.searchInput?.focus();
                 });
 
-                this.selectTrigger?.addEventListener('click', (e) => {
+                this.selectTrigger?.addEventListener("click", (e) => {
                   e.stopPropagation();
-                  this.selectOptions?.classList.toggle('open');
+                  this.selectOptions?.classList.toggle("open");
                 });
 
-                this.shadowRoot?.addEventListener('click', () => this.selectOptions?.classList.remove('open'));
+                this.shadowRoot?.addEventListener("click", () => this.selectOptions?.classList.remove("open"));
 
-                this.shareBtn?.addEventListener('click', () => this.handleShare());
+                this.shareBtn?.addEventListener("click", () => this.handleShare());
                 
-                this.shareEmbedBtn?.addEventListener('click', async () => {
+                this.shareEmbedBtn?.addEventListener("click", async () => {
                   let shareName = this.selectedLocation.name;
                   if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
                     shareName = this.selectedLocation.subName;
                   }
-                  const embedCodeValue = this.embedCodeText ? (this.embedCodeText.value || this.embedCodeText.innerText) : '';
-                  const shareText = \`【\${shareName}の埋め込みコード】\\n\\n\${embedCodeValue}\`;
+                  const embedCodeValue = this.embedCodeText ? (this.embedCodeText.value || this.embedCodeText.innerText) : "";
+                  const shareText = \\`【\${shareName}の埋め込みコード】\\\\n\\\\n\${embedCodeValue}\\`;
 
                   if (navigator.share) {
                     try {
                       await navigator.share({
-                        title: \`\${shareName}の埋め込みコード\`,
+                        title: \\`\${shareName}の埋め込みコード\\`,
                         text: shareText
                       });
-                    } catch (err) {
-                      console.log('共有キャンセル:', err);
-                    }
+                    } catch (err) {}
                   } else {
                     try {
                       await navigator.clipboard.writeText(shareText);
-                      alert(\`埋め込みコードをコピーしました！\\n\\n\${shareText}\`);
+                      alert(\\`埋め込みコードをコピーしました！\\\\n\\\\n\${shareText}\\`);
                     } catch (err) {
-                      prompt('以下のテキストをコピーしてください:', shareText);
+                      prompt("以下のテキストをコピーしてください:", shareText);
                     }
                   }
                 });
 
-                this.openEmbedModal?.addEventListener('click', () => {
+                this.openEmbedModal?.addEventListener("click", () => {
                   this.updateEmbedCodeText();
-                  if (this.embedModal) this.embedModal.style.display = 'flex';
+                  if (this.embedModal) this.embedModal.style.display = "flex";
                 });
 
-                this.closeEmbedModal?.addEventListener('click', () => {
-                  if (this.embedModal) this.embedModal.style.display = 'none';
+                this.closeEmbedModal?.addEventListener("click", () => {
+                  if (this.embedModal) this.embedModal.style.display = "none";
                 });
 
-                this.copyEmbedBtn?.addEventListener('click', async () => {
+                this.copyEmbedBtn?.addEventListener("click", async () => {
                   this.updateEmbedCodeText();
-                  const targetText = this.embedCodeText ? (this.embedCodeText.value || this.embedCodeText.innerText) : '';
+                  const targetText = this.embedCodeText ? (this.embedCodeText.value || this.embedCodeText.innerText) : "";
                   try {
                     await navigator.clipboard.writeText(targetText);
-                    alert('埋め込みコードをコピーしました！');
+                    alert("埋め込みコードをコピーしました！");
                   } catch (e) {
                     if (this.embedCodeText && this.embedCodeText.select) this.embedCodeText.select();
-                    document.execCommand('copy');
-                    alert('コードをコピーしました！');
+                    document.execCommand("copy");
+                    alert("コードをコピーしました！");
                   }
                 });
 
-                this.searchBtn?.addEventListener('click', () => this.handleSearch());
-                this.gpsBtn?.addEventListener('click', () => this.executeGpsFetch(true));
+                this.searchBtn?.addEventListener("click", () => this.handleSearch());
+                this.gpsBtn?.addEventListener("click", () => this.executeGpsFetch(true));
               }
 
               updateEmbedCodeText() {
@@ -211,57 +211,57 @@ jobs:
                 if (this.selectedLocation.name === "現在地" && this.selectedLocation.subName) {
                   locName = this.selectedLocation.subName;
                 }
-                const query = \`?lat=\${this.selectedLocation.lat}&lon=\${this.selectedLocation.lon}&name=\${encodeURIComponent(locName)}\`;
-                const scriptUrl = \`https://\${GITHUB_USERNAME}.github.io/\${GITHUB_REPO}/weather_widget.js\${query}\`;
-                const embedCode = \`<div id="retro-weather-widget"></div>\\n<script src="\${scriptUrl}" defer></script>\`;
+                const query = \\`?lat=\${this.selectedLocation.lat}&lon=\${this.selectedLocation.lon}&name=\${encodeURIComponent(locName)}\\`;
+                const scriptUrl = \\`https://\${GITHUB_USERNAME}.github.io/\${GITHUB_REPO}/weather_widget.js\${query}\\`;
+                const embedCode = \\`<div id="retro-weather-widget"></div>\\\\n<script src="\${scriptUrl}" defer></script>\\`;
 
                 if (this.embedCodeText) {
-                  if ('value' in this.embedCodeText) {
+                  if ("value" in this.embedCodeText) {
                     this.embedCodeText.value = embedCode;
                   }
                   this.embedCodeText.innerText = embedCode;
                 }
               }
 
-              openInitModal() { if (this.initLocationModal) this.initLocationModal.style.display = 'flex'; }
-              closeInitModal() { if (this.initLocationModal) this.initLocationModal.style.display = 'none'; }
+              openInitModal() { if (this.initLocationModal) this.initLocationModal.style.display = "flex"; }
+              closeInitModal() { if (this.initLocationModal) this.initLocationModal.style.display = "none"; }
 
               renderCustomSelect() {
                 if (!this.selectOptions || !this.selectedText) return;
-                this.selectOptions.innerHTML = '';
-                this.selectedText.innerHTML = \`
+                this.selectOptions.innerHTML = "";
+                this.selectedText.innerHTML = \\`
                   <span class="option-label">
                     <img class="pixel-icon option-icon" src="\${this.selectedLocation.icon}">
                     \${this.selectedLocation.name}
                   </span>
-                \`;
+                \\`;
 
                 this.currentLocations.forEach((loc, index) => {
-                  const optionDiv = document.createElement('div');
-                  optionDiv.className = 'custom-option';
+                  const optionDiv = document.createElement("div");
+                  optionDiv.className = "custom-option";
 
-                  const labelDiv = document.createElement('div');
-                  labelDiv.className = 'option-label';
-                  labelDiv.innerHTML = \`<img class="pixel-icon option-icon" src="\${loc.icon}"> \${loc.name}\`;
+                  const labelDiv = document.createElement("div");
+                  labelDiv.className = "option-label";
+                  labelDiv.innerHTML = \\`<img class="pixel-icon option-icon" src="\${loc.icon}"> \${loc.name}\\`;
                   
                   optionDiv.appendChild(labelDiv);
 
                   if (!loc.isPreset) {
-                    const delBtn = document.createElement('button');
-                    delBtn.className = 'delete-item-btn';
-                    delBtn.innerText = '×';
-                    delBtn.title = '削除';
-                    delBtn.addEventListener('click', (e) => {
+                    const delBtn = document.createElement("button");
+                    delBtn.className = "delete-item-btn";
+                    delBtn.innerText = "×";
+                    delBtn.title = "削除";
+                    delBtn.addEventListener("click", (e) => {
                       e.stopPropagation();
                       this.deleteLocation(index);
                     });
                     optionDiv.appendChild(delBtn);
                   }
 
-                  optionDiv.addEventListener('click', () => {
+                  optionDiv.addEventListener("click", () => {
                     this.selectedLocation = loc;
                     this.renderCustomSelect();
-                    this.selectOptions?.classList.remove('open');
+                    this.selectOptions?.classList.remove("open");
                     this.fetchWeatherData(this.selectedLocation);
                   });
 
@@ -285,7 +285,7 @@ jobs:
               }
 
               loadSavedLocations() {
-                const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
                 saved.forEach(loc => {
                   loc.icon = ICON_SEARCH;
                   this.currentLocations.push(loc);
@@ -295,20 +295,20 @@ jobs:
               checkParams() {
                 let params = new URLSearchParams(window.location.search);
                 
-                if (!params.get('lat')) {
-                  const scripts = document.querySelectorAll('script[src*="weather_widget.js"]');
+                if (!params.get("lat")) {
+                  const scripts = document.querySelectorAll("script[src*=\\"weather_widget.js\\"]");
                   if (scripts.length > 0) {
                     const lastScript = scripts[scripts.length - 1];
-                    const src = lastScript.getAttribute('src');
-                    if (src && src.includes('?')) {
-                      params = new URLSearchParams(src.split('?')[1]);
+                    const src = lastScript.getAttribute("src");
+                    if (src && src.includes("?")) {
+                      params = new URLSearchParams(src.split("?")[1]);
                     }
                   }
                 }
 
-                const lat = parseFloat(params.get('lat'));
-                const lon = parseFloat(params.get('lon'));
-                const name = params.get('name');
+                const lat = parseFloat(params.get("lat"));
+                const lon = parseFloat(params.get("lon"));
+                const name = params.get("name");
 
                 if (lat && lon && name) {
                   const decodedName = decodeURIComponent(name);
@@ -321,7 +321,7 @@ jobs:
 
                   this.selectedLocation = paramLoc;
                   if (this.searchInput) this.searchInput.value = decodedName;
-                  if (this.clearInputBtn) this.clearInputBtn.style.display = 'block';
+                  if (this.clearInputBtn) this.clearInputBtn.style.display = "block";
                   return true;
                 }
                 return false;
@@ -332,15 +332,15 @@ jobs:
                 const query = this.searchInput.value.trim();
                 if (!query) return;
 
-                this.safeSetText('weatherTelop', '検索中...');
+                this.safeSetText("weatherTelop", "検索中...");
 
                 try {
-                  const geoUrl = \`https://geocoding-api.open-meteo.com/v1/search?name=\${encodeURIComponent(query)}&count=5&language=ja&format=json\`;
+                  const geoUrl = \\`https://geocoding-api.open-meteo.com/v1/search?name=\${encodeURIComponent(query)}&count=5&language=ja&format=json\\`;
                   let res = await fetch(geoUrl).then(r => r.json());
-                  let place = res.results?.find(p => p.country_code === 'JP') || res.results?.[0];
+                  let place = res.results?.find(p => p.country_code === "JP") || res.results?.[0];
 
                   if (!place) {
-                    const osmUrl = \`https://nominatim.openstreetmap.org/search?format=json&q=\${encodeURIComponent(query + ' 日本')}&limit=1\`;
+                    const osmUrl = \\`https://nominatim.openstreetmap.org/search?format=json&q=\${encodeURIComponent(query + " 日本")}&limit=1\\`;
                     const osmRes = await fetch(osmUrl).then(r => r.json());
                     if (osmRes && osmRes.length > 0) {
                       place = { name: query, latitude: parseFloat(osmRes[0].lat), longitude: parseFloat(osmRes[0].lon) };
@@ -348,8 +348,8 @@ jobs:
                   }
 
                   if (!place) {
-                    alert('該当する場所が見つかりませんでした');
-                    this.safeSetText('weatherTelop', '検索失敗');
+                    alert("該当する場所が見つかりませんでした");
+                    this.safeSetText("weatherTelop", "検索失敗");
                     return;
                   }
 
@@ -368,7 +368,7 @@ jobs:
 
                 } catch (err) {
                   console.error(err);
-                  alert('検索エラーが発生しました');
+                  alert("検索エラーが発生しました");
                 }
               }
 
@@ -378,7 +378,7 @@ jobs:
                   return;
                 }
 
-                this.safeSetText('weatherTelop', '現在地を取得中...');
+                this.safeSetText("weatherTelop", "現在地を取得中...");
 
                 const gpsTimeout = setTimeout(() => {
                   this.handleGpsError();
@@ -389,13 +389,13 @@ jobs:
                   const lat = position.coords.latitude;
                   const lon = position.coords.longitude;
                   
-                  localStorage.setItem(VISITED_KEY, 'true');
-                  localStorage.setItem(GPS_ALLOWED_KEY, 'true');
+                  localStorage.setItem(VISITED_KEY, "true");
+                  localStorage.setItem(GPS_ALLOWED_KEY, "true");
                   this.closeInitModal();
 
                   let detectedCity = "";
                   try {
-                    const res = await fetch(\`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${lat}&lon=\${lon}&zoom=12&accept-language=ja\`).then(r => r.json());
+                    const res = await fetch(\\`https://nominatim.openstreetmap.org/reverse?format=json&lat=\${lat}&lon=\${lon}&zoom=12&accept-language=ja\\`).then(r => r.json());
                     if (res && res.address) {
                       detectedCity = res.address.city || res.address.town || res.address.village || res.address.suburb || res.address.county || "";
                     }
@@ -403,7 +403,7 @@ jobs:
 
                   if (detectedCity && this.searchInput) {
                     this.searchInput.value = detectedCity;
-                    if (this.clearInputBtn) this.clearInputBtn.style.display = 'block';
+                    if (this.clearInputBtn) this.clearInputBtn.style.display = "block";
                   }
 
                   const gpsLoc = { name: "現在地", subName: detectedCity, lat: lat, lon: lon, jmaFile: "130000", areaName: "東京地方", icon: ICON_GPS, isPreset: true };
@@ -419,12 +419,12 @@ jobs:
               }
 
               handleGpsError() {
-                localStorage.setItem(VISITED_KEY, 'true');
-                localStorage.setItem(GPS_ALLOWED_KEY, 'false');
+                localStorage.setItem(VISITED_KEY, "true");
+                localStorage.setItem(GPS_ALLOWED_KEY, "false");
                 
                 this.openInitModal();
-                if (this.initModalNotice) this.initModalNotice.style.display = 'block';
-                if (this.initGpsBtnText) this.initGpsBtnText.innerText = 'オンにしたので再試行';
+                if (this.initModalNotice) this.initModalNotice.style.display = "block";
+                if (this.initGpsBtnText) this.initGpsBtnText.innerText = "オンにしたので再試行";
                 
                 this.fetchWeatherData(this.selectedLocation);
               }
@@ -432,22 +432,22 @@ jobs:
               async fetchWeatherData(locationData) {
                 try {
                   const sr = this.shadowRoot;
-                  const loadingImg = sr ? sr.getElementById('loadingImg') : null;
-                  const weatherImg = sr ? sr.getElementById('weatherImg') : null;
+                  const loadingImg = sr ? sr.getElementById("loadingImg") : null;
+                  const weatherImg = sr ? sr.getElementById("weatherImg") : null;
 
-                  if (loadingImg) loadingImg.style.display = 'inline';
-                  if (weatherImg) weatherImg.style.display = 'none';
-                  this.safeSetText('weatherTelop', '通信中...');
+                  if (loadingImg) loadingImg.style.display = "inline";
+                  if (weatherImg) weatherImg.style.display = "none";
+                  this.safeSetText("weatherTelop", "通信中...");
 
-                  let displayName = \`[ \${locationData.name} ]\`;
+                  let displayName = \\`[ \${locationData.name} ]\\`;
                   if (locationData.name === "現在地" && locationData.subName) {
-                    displayName = \`[ 現在地 : \${locationData.subName} ]\`;
+                    displayName = \\`[ 現在地 : \${locationData.subName} ]\\`;
                   }
-                  this.safeSetText('displayLocationName', displayName);
+                  this.safeSetText("displayLocationName", displayName);
 
-                  const jmaUrl = \`https://www.jma.go.jp/bosai/forecast/data/forecast/\${locationData.jmaFile}.json\`;
-                  const openMeteoUrl = \`https://api.open-meteo.com/v1/forecast?latitude=\${locationData.lat}&longitude=\${locationData.lon}&current=temperature_2m,wind_speed_10m,uv_index,surface_pressure&timezone=Asia%2FTokyo\`;
-                  const pollenUrl = \`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=\${locationData.lat}&longitude=\${locationData.lon}&current=birch_pollen&timezone=Asia%2FTokyo\`;
+                  const jmaUrl = \\`https://www.jma.go.jp/bosai/forecast/data/forecast/\${locationData.jmaFile}.json\\`;
+                  const openMeteoUrl = \\`https://api.open-meteo.com/v1/forecast?latitude=\${locationData.lat}&longitude=\${locationData.lon}&current=temperature_2m,wind_speed_10m,uv_index,surface_pressure&timezone=Asia%2FTokyo\\`;
+                  const pollenUrl = \\`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=\${locationData.lat}&longitude=\${locationData.lon}&current=birch_pollen&timezone=Asia%2FTokyo\\`;
 
                   const [jmaRes, openMeteoRes, pollenRes] = await Promise.all([
                     fetch(jmaUrl).then(r => r.json()).catch(() => null),
@@ -467,30 +467,30 @@ jobs:
                   const uvIndex = openMeteoRes?.current?.uv_index ?? "--";
                   const pressure = openMeteoRes?.current?.surface_pressure ?? "--";
                   const birchPollen = pollenRes?.current?.birch_pollen ?? 0;
-                  const pollenText = birchPollen > 0 ? \`\${birchPollen} (飛散中)\` : '少ない/無';
+                  const pollenText = birchPollen > 0 ? \\`\${birchPollen} (飛散中)\\` : "少ない/無";
 
-                  this.safeSetText('weatherTelop', jmaWeatherTelop);
-                  this.safeSetText('tempDisplay', \`\${currentTemp} ℃\`);
-                  this.safeSetText('windSpeed', windSpeed);
-                  this.safeSetText('uvIndex', uvIndex);
-                  this.safeSetText('pressureDisplay', pressure);
-                  this.safeSetText('pollenIndex', pollenText);
+                  this.safeSetText("weatherTelop", jmaWeatherTelop);
+                  this.safeSetText("tempDisplay", \\`\${currentTemp} ℃\\`);
+                  this.safeSetText("windSpeed", windSpeed);
+                  this.safeSetText("uvIndex", uvIndex);
+                  this.safeSetText("pressureDisplay", pressure);
+                  this.safeSetText("pollenIndex", pollenText);
 
                   this.currentFetchedData = { weather: jmaWeatherTelop, temp: currentTemp, pressure: pressure, wind: windSpeed, uv: uvIndex, pollen: pollenText };
 
-                  if (typeof pressure === 'number') {
+                  if (typeof pressure === "number") {
                     this.evaluatePressure(pressure);
                   }
 
                   if (weatherImg) {
                     weatherImg.src = this.getPixelIconUrl(jmaWeatherTelop);
-                    weatherImg.style.display = 'inline';
+                    weatherImg.style.display = "inline";
                   }
-                  if (loadingImg) loadingImg.style.display = 'none';
+                  if (loadingImg) loadingImg.style.display = "none";
 
                 } catch (error) {
-                  console.error('Fetch Error:', error);
-                  this.safeSetText('weatherTelop', 'データ取得失敗');
+                  console.error("Fetch Error:", error);
+                  this.safeSetText("weatherTelop", "データ取得失敗");
                 }
               }
 
@@ -498,29 +498,29 @@ jobs:
                 try {
                   const sr = this.shadowRoot;
                   if (!sr) return;
-                  const alertEl = sr.getElementById('pressureAlert');
-                  const iconEl = sr.getElementById('pressureIcon');
-                  if (iconEl) iconEl.style.display = 'inline-block';
+                  const alertEl = sr.getElementById("pressureAlert");
+                  const iconEl = sr.getElementById("pressureIcon");
+                  if (iconEl) iconEl.style.display = "inline-block";
 
                   if (pressure < 1005) {
-                    if (alertEl) { alertEl.innerText = '低気圧警戒！無理せず休もう'; alertEl.style.color = '#ff3366'; }
-                    if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a0.png';
+                    if (alertEl) { alertEl.innerText = "低気圧警戒！無理せず休もう"; alertEl.style.color = "#ff3366"; }
+                    if (iconEl) iconEl.src = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a0.png";
                   } else if (pressure < 1010) {
-                    if (alertEl) { alertEl.innerText = 'やや低気圧：頭痛・倦怠感注意'; alertEl.style.color = '#ff9900'; }
-                    if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a1.png';
+                    if (alertEl) { alertEl.innerText = "やや低気圧：頭痛・倦怠感注意"; alertEl.style.color = "#ff9900"; }
+                    if (iconEl) iconEl.src = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/26a1.png";
                   } else {
-                    if (alertEl) { alertEl.innerText = '気圧安定：快適コンディション'; alertEl.style.color = '#00ffcc'; }
-                    if (iconEl) iconEl.src = 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2728.png';
+                    if (alertEl) { alertEl.innerText = "気圧安定：快適コンディション"; alertEl.style.color = "#00ffcc"; }
+                    if (iconEl) iconEl.src = "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2728.png";
                   }
                 } catch (e) {}
               }
 
               getPixelIconUrl(telop) {
-                if (telop.includes('晴')) return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2600.png';
-                if (telop.includes('雨')) return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f327.png';
-                if (telop.includes('くもり') || telop.includes('曇')) return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2601.png';
-                if (telop.includes('雪')) return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2744.png';
-                return 'https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f47e.png';
+                if (telop.includes("晴")) return "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2600.png";
+                if (telop.includes("雨")) return "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f327.png";
+                if (telop.includes("くもり") || telop.includes("曇")) return "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2601.png";
+                if (telop.includes("雪")) return "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/2744.png";
+                return "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f47e.png";
               }
 
               async handleShare() {
@@ -530,51 +530,50 @@ jobs:
                   shareName = this.selectedLocation.subName;
                 }
 
-                const shareUrl = \`\${baseUrl}?lat=\${this.selectedLocation.lat}&lon=\${this.selectedLocation.lon}&name=\${encodeURIComponent(shareName)}\`;
+                const shareUrl = \\`\${baseUrl}?lat=\${this.selectedLocation.lat}&lon=\${this.selectedLocation.lon}&name=\${encodeURIComponent(shareName)}\\`;
                 const now = new Date();
-                const timeStr = \`\${now.getFullYear()}年\${now.getMonth()+1}月\${now.getDate()}日 \${String(now.getHours()).padStart(2,'0')}:\${String(now.getMinutes()).padStart(2,'0')}\`;
+                const timeStr = \\`\${now.getFullYear()}年\${now.getMonth()+1}月\${now.getDate()}日 \${String(now.getHours()).padStart(2,"0")}:\${String(now.getMinutes()).padStart(2,"0")}\\`;
 
-                const shareText = \`【お天気メモ日記】\\n--------------------\\n📅 日時: \${timeStr}\\n📍 場所: \${shareName}\\n\\n🌤️ 天気: \${this.currentFetchedData.weather}\\n🌡️ 気温: \${this.currentFetchedData.temp} ℃\\n🎈 気圧: \${this.currentFetchedData.pressure} hPa\\n💨 風速: \${this.currentFetchedData.wind} m/s\\n☀️ UV指数: \${this.currentFetchedData.uv}\\n🌲 スギ花粉: \${this.currentFetchedData.pollen}\\n--------------------\\n🔗 今日のリアルタイムお天気リンク:\\n\${shareUrl}\`;
+                const shareText = \\`【お天気メモ日記】\\\\n--------------------\\\\n📅 日時: \${timeStr}\\\\n📍 場所: \${shareName}\\\\n\\\\n🌤️ 天気: \${this.currentFetchedData.weather}\\\\n🌡️ 気温: \${this.currentFetchedData.temp} ℃\\\\n🎈 気圧: \${this.currentFetchedData.pressure} hPa\\\\n💨 風速: \${this.currentFetchedData.wind} m/s\\\\n☀️ UV指数: \${this.currentFetchedData.uv}\\\\n🌲 スギ花粉: \${this.currentFetchedData.pollen}\\\\n--------------------\\\\n🔗 今日のリアルタイムお天気リンク:\\\\n\${shareUrl}\\`;
 
                 if (navigator.share) {
-                  try { await navigator.share({ title: \`\${shareName}のお天気メモ\`, text: shareText }); } catch (err) {}
+                  try { await navigator.share({ title: \\`\${shareName}のお天気メモ\\`, text: shareText }); } catch (err) {}
                 } else {
                   try {
                     await navigator.clipboard.writeText(shareText);
-                    alert('お天気メモをコピーしました！');
+                    alert("お天気メモをコピーしました！");
                   } catch (err) {
-                    prompt('以下のテキストをコピーしてください:', shareText);
+                    prompt("以下のテキストをコピーしてください:", shareText);
                   }
                 }
               }
             }
 
-            if (!customElements.get('retro-weather-widget')) {
-              customElements.define('retro-weather-widget', RetroWeatherWidget);
+            if (!customElements.get("retro-weather-widget")) {
+              customElements.define("retro-weather-widget", RetroWeatherWidget);
             }
 
-            window.addEventListener('DOMContentLoaded', () => {
-              let targetContainer = document.getElementById('retro-weather-widget');
+            window.addEventListener("DOMContentLoaded", () => {
+              let targetContainer = document.getElementById("retro-weather-widget");
               if (!targetContainer) {
-                targetContainer = document.createElement('div');
-                targetContainer.id = 'retro-weather-widget';
+                targetContainer = document.createElement("div");
+                targetContainer.id = "retro-weather-widget";
                 document.body.appendChild(targetContainer);
               }
               if (targetContainer.children.length === 0) {
-                targetContainer.appendChild(document.createElement('retro-weather-widget'));
+                targetContainer.appendChild(document.createElement("retro-weather-widget"));
               }
             });
           })();
-          `;
+          \`;
 
-          fs.writeFileSync('weather_widget.js', widgetScript, 'utf8');
-          EOF
-          node build-widget.js
+          fs.writeFileSync("weather_widget.js", widgetScript, "utf8");
+          '
 
       - name: Commit and Push JS Widget
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add weather_widget.js
-          git commit -m "Auto sync: Build widget with safe dynamic ID scanning" || echo "No changes to commit"
+          git commit -m "Auto build: Clean & exact HTML-to-JS compilation" || echo "No changes to commit"
           git push
