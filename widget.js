@@ -9,24 +9,9 @@
     }
 
     connectedCallback() {
-      // 1. 見た目（HTML・CSS・フォント）を Shadow DOM に注入
-      this.shadowRoot.innerHTML = htmlContent;
-
-      // 2. Shadow DOM 内の全要素を文書ドキュメント(body)側へ安全に開帳・展開（JSからのDOM参照を有効化）
-      const template = document.createElement('template');
-      template.innerHTML = htmlContent;
-      
-      // まだ画面に未追加の場合のみ追加
-      if (!document.getElementById('retro-weather-dom-container')) {
-        const domContainer = document.createElement('div');
-        domContainer.id = 'retro-weather-dom-container';
-        domContainer.style.display = 'contents';
-        
-        // シャドウ内のDOM構造を直接操作できるように展開
-        while (this.shadowRoot.firstChild) {
-          domContainer.appendChild(this.shadowRoot.firstChild.cloneNode(true));
-        }
-        this.shadowRoot.appendChild(template.content.cloneNode(true));
+      // 1. 見た目（HTML/CSS）を Shadow DOM に一度だけ注入
+      if (!this.shadowRoot.innerHTML) {
+        this.shadowRoot.innerHTML = htmlContent;
       }
     }
   }
@@ -35,25 +20,34 @@
     customElements.define('retro-weather-widget', RetroWeatherWidget);
   }
 
-  // グローバル空間で JS ロジックを実行（document.getElementById がそのまま動作）
-  window.addEventListener('DOMContentLoaded', () => {
+  // 2. ページ読み込み完了時に一度だけ画面へ追加し、JSを実行
+  const initWidget = () => {
     let container = document.getElementById('retro-weather-widget');
     if (!container) {
       container = document.createElement('div');
       container.id = 'retro-weather-widget';
       document.body.appendChild(container);
     }
+    
     if (container.children.length === 0) {
       container.appendChild(document.createElement('retro-weather-widget'));
     }
 
-    // 抽出された JavaScript ロジックを実行
-    try {
-      const scriptEl = document.createElement('script');
-      scriptEl.textContent = jsContent;
-      document.body.appendChild(scriptEl);
-    } catch (e) {
-      console.error('RetroWeather Widget JS Execution Error:', e);
+    // JSロジックを一度だけ実行
+    if (!window.__retro_weather_initialized) {
+      window.__retro_weather_initialized = true;
+      try {
+        const runJs = new Function(jsContent);
+        runJs();
+      } catch (e) {
+        console.error('RetroWeather Widget JS Execution Error:', e);
+      }
     }
-  });
+  };
+
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initWidget);
+  } else {
+    initWidget();
+  }
 })();
