@@ -1,4 +1,4 @@
-// build.js（仕様書準拠・超軽量全自動ビルド）
+// build.js（全自動・分離型ビルド）
 const fs = require('fs');
 const path = require('path');
 
@@ -9,12 +9,24 @@ if (!fs.existsSync(srcHtmlPath)) {
   process.exit(1);
 }
 
-// 1. HTML/CSS/JS が入ったファイルをそのまま軽量読み込み
 const rawHtml = fs.readFileSync(srcHtmlPath, 'utf8');
 
-// 2. 超シンプルなウィジェット生成テンプレート
+// 1. <script> タグの中身（JSロジック）を抽出
+const scriptRegex = /<script[\s\S]*?>([\s\S]*?)<\/script>/gi;
+let extractedJs = '';
+let match;
+
+while ((match = scriptRegex.exec(rawHtml)) !== null) {
+  extractedJs += match[1] + '\n';
+}
+
+// 2. <script> を除いた純粋な HTML/CSS（フォントや<style>を含む見た目全体）
+const cleanHtml = rawHtml.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+
+// 3. ウィジェットテンプレート（HTML/CSSはShadow DOMへ、JSはグローバルへ）
 const widgetTemplate = `(function() {
-  const htmlContent = ${JSON.stringify(rawHtml)};
+  const htmlContent = ${JSON.stringify(cleanHtml)};
+  const jsContent = ${JSON.stringify(extractedJs)};
 
   class RetroWeatherWidget extends HTMLElement {
     constructor() {
@@ -23,17 +35,25 @@ const widgetTemplate = `(function() {
     }
 
     connectedCallback() {
-      // 見た目（HTML/CSS）を Shadow DOM 内にカプセル化
+      // 1. 見た目（HTML・CSS・フォント）を Shadow DOM に注入
       this.shadowRoot.innerHTML = htmlContent;
 
-      // DOM内の script タグを安全に順次起動させる軽量ロジック
-      const scripts = this.shadowRoot.querySelectorAll('script');
-      scripts.forEach(oldScript => {
-        const newScript = document.createElement('script');
-        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-        newScript.textContent = oldScript.textContent;
-        oldScript.parentNode.replaceChild(newScript, oldScript);
-      });
+      // 2. Shadow DOM 内の全要素を文書ドキュメント(body)側へ安全に開帳・展開（JSからのDOM参照を有効化）
+      const template = document.createElement('template');
+      template.innerHTML = htmlContent;
+      
+      // まだ画面に未追加の場合のみ追加
+      if (!document.getElementById('retro-weather-dom-container')) {
+        const domContainer = document.createElement('div');
+        domContainer.id = 'retro-weather-dom-container';
+        domContainer.style.display = 'contents';
+        
+        // シャドウ内のDOM構造を直接操作できるように展開
+        while (this.shadowRoot.firstChild) {
+          domContainer.appendChild(this.shadowRoot.firstChild.cloneNode(true));
+        }
+        this.shadowRoot.appendChild(template.content.cloneNode(true));
+      }
     }
   }
 
@@ -41,6 +61,7 @@ const widgetTemplate = `(function() {
     customElements.define('retro-weather-widget', RetroWeatherWidget);
   }
 
+  // グローバル空間で JS ロジックを実行（document.getElementById がそのまま動作）
   window.addEventListener('DOMContentLoaded', () => {
     let container = document.getElementById('retro-weather-widget');
     if (!container) {
@@ -51,11 +72,20 @@ const widgetTemplate = `(function() {
     if (container.children.length === 0) {
       container.appendChild(document.createElement('retro-weather-widget'));
     }
+
+    // 抽出された JavaScript ロジックを実行
+    try {
+      const scriptEl = document.createElement('script');
+      scriptEl.textContent = jsContent;
+      document.body.appendChild(scriptEl);
+    } catch (e) {
+      console.error('RetroWeather Widget JS Execution Error:', e);
+    }
   });
 })();`;
 
-// 3. 成果物を書き出し（一発生成）
+// 成果物の書き出し
 fs.writeFileSync(path.join(__dirname, 'widget.js'), widgetTemplate, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'weather_widget.js'), widgetTemplate, 'utf8');
 
-console.log('✨ [Success] 仕様書通りの超軽量 widget.js / weather_widget.js を生成しました！');
+console.log('✨ [Success] HTML/CSSとJSを分離した超軽量ウィジェットのビルドが完了しました！');
