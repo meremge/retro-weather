@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 
 const srcHtmlPath = path.join(__dirname, 'RETRO_WEATHER.html');
-const distJsPath = path.join(__dirname, 'widget.js');
 
 // 1. FC2用メインHTMLの読み込み
 if (!fs.existsSync(srcHtmlPath)) {
@@ -14,7 +13,6 @@ if (!fs.existsSync(srcHtmlPath)) {
 const rawHtml = fs.readFileSync(srcHtmlPath, 'utf8');
 
 // 2. JavaScriptテンプレート（Shadow DOMのカプセル化＆一括バインド）
-// HTML/CSS全体を safeHtmlString としてそのまま Shadow DOM 内へ注入します。
 const widgetTemplate = `(function() {
   const htmlContent = ${JSON.stringify(rawHtml)};
 
@@ -28,7 +26,7 @@ const widgetTemplate = `(function() {
       // Shadow DOM 内に HTML/CSS をカプセル化（外部サイトのスタイル干渉を遮断）
       this.shadowRoot.innerHTML = htmlContent;
 
-      // Shadow DOM 外部からのイベントバインド処理・DOM初期化などをここに実行
+      // DOM初期化・イベントバインド処理
       this.initWidgetEvents();
     }
 
@@ -36,14 +34,13 @@ const widgetTemplate = `(function() {
       const sr = this.shadowRoot;
       if (!sr) return;
 
-      // 例: 安全な要素取得とイベント設定（要素が存在しない場合もエラー落ちしない構造）
+      // 安全な要素取得例（要素がなくてもエラー落ちしない構造）
       const searchBtn = sr.getElementById('searchBtn');
       const searchInput = sr.getElementById('searchInput');
 
       if (searchBtn && searchInput) {
         searchBtn.addEventListener('click', () => {
           const query = searchInput.value;
-          // 既存の検索処理を呼ぶ
         });
       }
     }
@@ -67,6 +64,8 @@ const widgetTemplate = `(function() {
   });
 })();`;
 
-// 3. 成果物 widget.js の書き出し
-fs.writeFileSync(distJsPath, widgetTemplate, 'utf8');
-console.log('✨ [Success] widget.js が正常に自動生成されました！');
+// 3. 成果物の書き出し（2つのファイル名に出力して互換性を完全維持）
+fs.writeFileSync(path.join(__dirname, 'widget.js'), widgetTemplate, 'utf8');
+fs.writeFileSync(path.join(__dirname, 'weather_widget.js'), widgetTemplate, 'utf8');
+
+console.log('✨ [Success] widget.js および weather_widget.js が正常に自動生成されました！');
