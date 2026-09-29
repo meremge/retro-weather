@@ -1,4 +1,4 @@
-// build.js（無限ループ完全防止・安全版）
+// build.js（HTML/CSSのみShadow DOM化 + JS完全自動抽出版）
 const fs = require('fs');
 const path = require('path');
 
@@ -20,14 +20,23 @@ while ((match = scriptRegex.exec(rawHtml)) !== null) {
   extractedJs += match[1] + '\n';
 }
 
-// 2. <script> を除いた純粋な HTML/CSS
+// 2. <script> を取り除いた「純粋な HTML + CSS」
 const cleanHtml = rawHtml.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
 
-// 3. ウィジェットテンプレート
+// 3. ウィジェット配信スクリプトの組み立て
 const widgetTemplate = `(function() {
+  // A. DotGothic16 フォントを親ページの head へ自動注入
+  if (!document.querySelector("link[href*='DotGothic16']")) {
+    const fontLink = document.createElement("link");
+    fontLink.rel = "stylesheet";
+    fontLink.href = "https://fonts.googleapis.com/css2?family=DotGothic16&display=swap";
+    document.head.appendChild(fontLink);
+  }
+
   const htmlContent = ${JSON.stringify(cleanHtml)};
   const jsContent = ${JSON.stringify(extractedJs)};
 
+  // B. 見た目（HTML/CSS）だけを Shadow DOM 化するカスタム要素
   class RetroWeatherWidget extends HTMLElement {
     constructor() {
       super();
@@ -35,7 +44,6 @@ const widgetTemplate = `(function() {
     }
 
     connectedCallback() {
-      // 1. 見た目（HTML/CSS）を Shadow DOM に一度だけ注入
       if (!this.shadowRoot.innerHTML) {
         this.shadowRoot.innerHTML = htmlContent;
       }
@@ -46,7 +54,7 @@ const widgetTemplate = `(function() {
     customElements.define('retro-weather-widget', RetroWeatherWidget);
   }
 
-  // 2. ページ読み込み完了時に一度だけ画面へ追加し、JSを実行
+  // C. 画面への挿入 ＆ JS のグローバル実行
   const initWidget = () => {
     let container = document.getElementById('retro-weather-widget');
     if (!container) {
@@ -59,10 +67,21 @@ const widgetTemplate = `(function() {
       container.appendChild(document.createElement('retro-weather-widget'));
     }
 
-    // JSロジックを一度だけ実行
+    // JSロジックを一度だけグローバル空間で実行
     if (!window.__retro_weather_initialized) {
       window.__retro_weather_initialized = true;
       try {
+        // Shadow DOM 内の要素も getElementById 等で探せるように一時補正して実行
+        const widgetEl = container.querySelector('retro-weather-widget');
+        const sr = widgetEl ? widgetEl.shadowRoot : null;
+        
+        if (sr) {
+          const originalGetId = document.getElementById.bind(document);
+          document.getElementById = function(id) {
+            return sr.getElementById(id) || originalGetId(id);
+          };
+        }
+
         const runJs = new Function(jsContent);
         runJs();
       } catch (e) {
@@ -78,8 +97,8 @@ const widgetTemplate = `(function() {
   }
 })();`;
 
-// 成果物の書き出し
+// ファイル出力
 fs.writeFileSync(path.join(__dirname, 'widget.js'), widgetTemplate, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'weather_widget.js'), widgetTemplate, 'utf8');
 
-console.log('✨ [Success] 無限ループ防止版 widget.js を生成しました！');
+console.log('✨ [Success] 見た目分離＆JSグローバル実行版 widget.js を生成しました！');
