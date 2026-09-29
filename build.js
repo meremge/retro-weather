@@ -1,4 +1,4 @@
-// build.js（Shadow DOMスコープ完全補正版）
+// build.js（仕様書準拠・超軽量全自動ビルド）
 const fs = require('fs');
 const path = require('path');
 
@@ -9,30 +9,12 @@ if (!fs.existsSync(srcHtmlPath)) {
   process.exit(1);
 }
 
+// 1. HTML/CSS/JS が入ったファイルをそのまま軽量読み込み
 const rawHtml = fs.readFileSync(srcHtmlPath, 'utf8');
 
-// 1. HTMLから <script> の中身（JSロジック）を抽出
-const scriptRegex = /<script[\s\S]*?>([\s\S]*?)<\/script>/gi;
-let extractedJs = '';
-let match;
-
-while ((match = scriptRegex.exec(rawHtml)) !== null) {
-  extractedJs += match[1] + '\n';
-}
-
-// 2. JS内の document. 参照を shadowRoot(sr) 参照に自動置換して範囲を閉じ込める
-// (document.getElementById -> sr.getElementById 等)
-const scopedJs = extractedJs
-  .replace(/document\./g, 'sr.')
-  .replace(/window\.addEventListener\s*\(\s*['"]DOMContentLoaded['"]/g, 'setTimeout');
-
-// 3. <script> タグを除去した純粋な HTML/CSS
-const cleanHtml = rawHtml.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
-
-// 4. ウィジェットテンプレート
+// 2. 超シンプルなウィジェット生成テンプレート
 const widgetTemplate = `(function() {
-  const htmlContent = ${JSON.stringify(cleanHtml)};
-  const jsContent = ${JSON.stringify(scopedJs)};
+  const htmlContent = ${JSON.stringify(rawHtml)};
 
   class RetroWeatherWidget extends HTMLElement {
     constructor() {
@@ -41,20 +23,17 @@ const widgetTemplate = `(function() {
     }
 
     connectedCallback() {
-      // HTML/CSS を Shadow DOM 内に挿入
+      // 見た目（HTML/CSS）を Shadow DOM 内にカプセル化
       this.shadowRoot.innerHTML = htmlContent;
 
-      const sr = this.shadowRoot;
-
-      // DOMが構築された直後に抽出・スコープ補正したJSを実行
-      setTimeout(() => {
-        try {
-          const runWidgetLogic = new Function('sr', 'shadowRoot', jsContent);
-          runWidgetLogic(sr, sr);
-        } catch (e) {
-          console.error('Widget Script Execution Error:', e);
-        }
-      }, 0);
+      // DOM内の script タグを安全に順次起動させる軽量ロジック
+      const scripts = this.shadowRoot.querySelectorAll('script');
+      scripts.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+        newScript.textContent = oldScript.textContent;
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+      });
     }
   }
 
@@ -75,8 +54,8 @@ const widgetTemplate = `(function() {
   });
 })();`;
 
-// 成果物の書き出し
+// 3. 成果物を書き出し（一発生成）
 fs.writeFileSync(path.join(__dirname, 'widget.js'), widgetTemplate, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'weather_widget.js'), widgetTemplate, 'utf8');
 
-console.log('✨ [Success] Shadow DOMスコープ補正済みの widget.js / weather_widget.js を生成しました！');
+console.log('✨ [Success] 仕様書通りの超軽量 widget.js / weather_widget.js を生成しました！');
