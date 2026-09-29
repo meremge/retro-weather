@@ -1,4 +1,4 @@
-// build.js（DotGothic16フォント強力適用版）
+// build.js（100%元のCSS適用・将来アップデート完全対応版）
 const fs = require('fs');
 const path = require('path');
 
@@ -11,7 +11,7 @@ if (!fs.existsSync(srcHtmlPath)) {
 
 const rawHtml = fs.readFileSync(srcHtmlPath, 'utf8');
 
-// 1. <script> の中身（JS）を抽出
+// 1. <script> の中身（JSロジック）を抽出
 const scriptRegex = /<script[\s\S]*?>([\s\S]*?)<\/script>/gi;
 let extractedJs = '';
 let match;
@@ -20,16 +20,25 @@ while ((match = scriptRegex.exec(rawHtml)) !== null) {
   extractedJs += match[1] + '\n';
 }
 
-// 2. <script> を取り除いた HTML + CSS
+// 2. <script> を取り除いた純粋な HTML + CSS
 let cleanHtml = rawHtml.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
 
-// 3. Shadow DOM内部用に DotGothic16 の @import を強制挿入
-const fontImportTag = `<style>@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap'); * { font-family: 'DotGothic16', sans-serif !important; }</style>`;
+// 3. Shadow DOM 内にフォント読み込みと基本ルートスタイルだけを追加（個別カラーは一切上書きしない）
+const fontImportTag = `<style>
+  @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+  
+  :host, * {
+    font-family: 'DotGothic16', sans-serif !important;
+  }
+  :host {
+    display: block;
+  }
+</style>`;
 cleanHtml = fontImportTag + cleanHtml;
 
 // 4. ウィジェット配信スクリプトの組み立て
 const widgetTemplate = `(function() {
-  // 親ページの head にもフォント読み込みを追加（フォントファイルのプリロード用）
+  // 親ページの head に DotGothic16 フォントをロード
   if (!document.querySelector("link[href*='DotGothic16']")) {
     const fontLink = document.createElement("link");
     fontLink.rel = "stylesheet";
@@ -100,4 +109,4 @@ const widgetTemplate = `(function() {
 fs.writeFileSync(path.join(__dirname, 'widget.js'), widgetTemplate, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'weather_widget.js'), widgetTemplate, 'utf8');
 
-console.log('✨ [Success] フォント強力適用版 widget.js を生成しました！');
+console.log('✨ [Success] 全差し替え・汎用スタイル版 widget.js を生成しました！');
