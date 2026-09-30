@@ -1,4 +1,4 @@
-// build.js（見た目完全維持 + ウィジェットパラメータ取得強化版）
+// build.js（見た目完全維持 + パラメーター取得完全互換版）
 const fs = require('fs');
 const path = require('path');
 
@@ -99,7 +99,7 @@ const widgetTemplate = `(function() {
           };
         }
 
-        // JS実行前に、自自身の script タグからクエリパラメータを確実に認識できるよう初期化
+        // HTML内のJSがそのままグローバル空間で動くように実行
         const runJs = new Function(jsContent);
         runJs();
       } catch (e) {
@@ -119,4 +119,4 @@ const widgetTemplate = `(function() {
 fs.writeFileSync(path.join(__dirname, 'widget.js'), widgetTemplate, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'weather_widget.js'), widgetTemplate, 'utf8');
 
-console.log('✨ [Success] 見た目・パラメータ完全対応版 widget.js を生成しました！');
+console.log('✨ [Success] 見た目・全機能完全全自動対応 widget.js を生成しました！');
