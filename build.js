@@ -1,4 +1,4 @@
-// build.js（見た目完全維持 + パラメーター取得完全互換版）
+// build.js（見た目・抽出機能完全維持 ＋ パラメータGPSスキップ修復版）
 const fs = require('fs');
 const path = require('path');
 
@@ -11,7 +11,7 @@ if (!fs.existsSync(srcHtmlPath)) {
 
 const rawHtml = fs.readFileSync(srcHtmlPath, 'utf8');
 
-// 1. <script> の中身（JS）を抽出
+// 1. <script> の中身（JS）をそのまま抽出
 const scriptRegex = /<script[\s\S]*?>([\s\S]*?)<\/script>/gi;
 let extractedJs = '';
 let match;
@@ -23,7 +23,7 @@ while ((match = scriptRegex.exec(rawHtml)) !== null) {
 // 2. <script> を取り除いた「純粋な HTML + CSS」
 let cleanHtml = rawHtml.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
 
-// 3. body スタイルを :host に読み替えつつ、外側の全幅広がり＆余剰背景をカット
+// 3. body スタイルを :host に読み替えつつ、外側の全幅広がり＆余剰背景をカット（直した見た目を維持）
 cleanHtml = cleanHtml.replace(/(^|\}|\s)body([\s,\{\.\#])/gi, '$1:host$2');
 
 const scopeFixRule = `<style>
@@ -99,8 +99,23 @@ const widgetTemplate = `(function() {
           };
         }
 
-        // HTML内のJSがそのままグローバル空間で動くように実行
-        const runJs = new Function(jsContent);
+        /* --- 今回修正した唯一のポイント（パラメータ認識の補完） --- */
+        const scripts = document.querySelectorAll('script[src*="weather_widget.js"], script[src*="widget.js"]');
+        const currentScript = document.currentScript || (scripts.length > 0 ? scripts[scripts.length - 1] : null);
+        
+        let scriptQuery = '';
+        if (currentScript && currentScript.src && currentScript.src.includes('?')) {
+          scriptQuery = currentScript.src.split('?')[1];
+        }
+
+        const wrappedJs = \`
+          (function() {
+            window.__WIDGET_SCRIPT_QUERY__ = "\${scriptQuery}";
+            \${jsContent}
+          })();
+        \`;
+
+        const runJs = new Function(wrappedJs);
         runJs();
       } catch (e) {
         console.error('RetroWeather Widget JS Execution Error:', e);
@@ -119,4 +134,4 @@ const widgetTemplate = `(function() {
 fs.writeFileSync(path.join(__dirname, 'widget.js'), widgetTemplate, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'weather_widget.js'), widgetTemplate, 'utf8');
 
-console.log('✨ [Success] 見た目・全機能完全全自動対応 widget.js を生成しました！');
+console.log('✨ [Success] 完璧版 widget.js を生成しました！');
