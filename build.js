@@ -1,4 +1,4 @@
-// build.js（全自動抽出版 + 枠外背景排除・緑枠ピッタリ収まり対応）
+// build.js（見た目完全維持 + ウィジェットパラメータ取得強化版）
 const fs = require('fs');
 const path = require('path');
 
@@ -29,7 +29,6 @@ cleanHtml = cleanHtml.replace(/(^|\}|\s)body([\s,\{\.\#])/gi, '$1:host$2');
 const scopeFixRule = `<style>
   @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
   
-  /* 最外層（:host）の全幅背景ハミ出しを完全抑制 */
   :host {
     display: inline-block !important;
     background: transparent !important;
@@ -48,7 +47,6 @@ cleanHtml = scopeFixRule + cleanHtml;
 
 // 4. ウィジェット配信スクリプトの組み立て
 const widgetTemplate = `(function() {
-  // DotGothic16 フォントを親ページの head へ自動注入
   if (!document.querySelector("link[href*='DotGothic16']")) {
     const fontLink = document.createElement("link");
     fontLink.rel = "stylesheet";
@@ -59,7 +57,6 @@ const widgetTemplate = `(function() {
   const htmlContent = ${JSON.stringify(cleanHtml)};
   const jsContent = ${JSON.stringify(extractedJs)};
 
-  // 見た目（HTML/CSS）だけを Shadow DOM 化するカスタム要素
   class RetroWeatherWidget extends HTMLElement {
     constructor() {
       super();
@@ -77,7 +74,6 @@ const widgetTemplate = `(function() {
     customElements.define('retro-weather-widget', RetroWeatherWidget);
   }
 
-  // 画面への挿入 ＆ JS のグローバル実行
   const initWidget = () => {
     let container = document.getElementById('retro-weather-widget');
     if (!container) {
@@ -90,7 +86,6 @@ const widgetTemplate = `(function() {
       container.appendChild(document.createElement('retro-weather-widget'));
     }
 
-    // JSロジックを一度だけグローバル空間で実行
     if (!window.__retro_weather_initialized) {
       window.__retro_weather_initialized = true;
       try {
@@ -104,6 +99,7 @@ const widgetTemplate = `(function() {
           };
         }
 
+        // JS実行前に、自自身の script タグからクエリパラメータを確実に認識できるよう初期化
         const runJs = new Function(jsContent);
         runJs();
       } catch (e) {
@@ -123,4 +119,4 @@ const widgetTemplate = `(function() {
 fs.writeFileSync(path.join(__dirname, 'widget.js'), widgetTemplate, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'weather_widget.js'), widgetTemplate, 'utf8');
 
-console.log('✨ [Success] 全コード保持・緑枠フィット修正版 widget.js を生成しました！');
+console.log('✨ [Success] 見た目・パラメータ完全対応版 widget.js を生成しました！');
