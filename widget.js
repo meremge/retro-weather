@@ -51,8 +51,23 @@
           };
         }
 
-        // HTML内のJSがそのままグローバル空間で動くように実行
-        const runJs = new Function(jsContent);
+        /* --- 今回修正した唯一のポイント（パラメータ認識の補完） --- */
+        const scripts = document.querySelectorAll('script[src*="weather_widget.js"], script[src*="widget.js"]');
+        const currentScript = document.currentScript || (scripts.length > 0 ? scripts[scripts.length - 1] : null);
+        
+        let scriptQuery = '';
+        if (currentScript && currentScript.src && currentScript.src.includes('?')) {
+          scriptQuery = currentScript.src.split('?')[1];
+        }
+
+        const wrappedJs = `
+          (function() {
+            window.__WIDGET_SCRIPT_QUERY__ = "${scriptQuery}";
+            ${jsContent}
+          })();
+        `;
+
+        const runJs = new Function(wrappedJs);
         runJs();
       } catch (e) {
         console.error('RetroWeather Widget JS Execution Error:', e);
