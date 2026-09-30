@@ -1,4 +1,13 @@
 (function() {
+  // ■ 1. 読み込まれた瞬間に埋め込み script タグとパラメータを確定
+  const realCurrentScript = document.currentScript || (function() {
+    const scripts = document.querySelectorAll('script[src*="weather_widget.js"], script[src*="widget.js"]');
+    return scripts.length > 0 ? scripts[scripts.length - 1] : null;
+  })();
+
+  const rawSrc = realCurrentScript ? realCurrentScript.src : '';
+  const queryString = rawSrc.includes('?') ? rawSrc.split('?')[1] : '';
+
   if (!document.querySelector("link[href*='DotGothic16']")) {
     const fontLink = document.createElement("link");
     fontLink.rel = "stylesheet";
@@ -51,24 +60,36 @@
           };
         }
 
-        /* --- 今回修正した唯一のポイント（パラメータ認識の補完） --- */
-        const scripts = document.querySelectorAll('script[src*="weather_widget.js"], script[src*="widget.js"]');
-        const currentScript = document.currentScript || (scripts.length > 0 ? scripts[scripts.length - 1] : null);
-        
-        let scriptQuery = '';
-        if (currentScript && currentScript.src && currentScript.src.includes('?')) {
-          scriptQuery = currentScript.src.split('?')[1];
-        }
+        // ■ 2. 抽出JS実行時、どの口から探してもパラメータが拾える「環境シミュレータ」を構築
+        const runWrappedJs = new Function(
+          'queryString',
+          'realScript',
+          `
+          // Route A: document.currentScript を偽装復元
+          try {
+            Object.defineProperty(document, 'currentScript', {
+              get: () => realScript,
+              configurable: true
+            });
+          } catch(e) {}
 
-        const wrappedJs = `
-          (function() {
-            window.__WIDGET_SCRIPT_QUERY__ = "${scriptQuery}";
-            ${jsContent}
-          })();
-        `;
+          // Route B: window.location.search が空なら埋め込みパラメータを模倣
+          if (queryString && (!window.location.search || window.location.search === '')) {
+            try {
+              Object.defineProperty(window.location, 'search', {
+                get: () => '?' + queryString,
+                configurable: true
+              });
+            } catch(e) {}
+          }
 
-        const runJs = new Function(wrappedJs);
-        runJs();
+          // Route C: 抽出された元の JavaScript を実行
+          ${jsContent}
+          `
+        );
+
+        runWrappedJs(queryString, realCurrentScript);
+
       } catch (e) {
         console.error('RetroWeather Widget JS Execution Error:', e);
       }
