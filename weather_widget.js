@@ -51,7 +51,7 @@
           };
         }
 
-        // JS実行前に、自自身の script タグからクエリパラメータを確実に認識できるよう初期化
+        // HTML内のJSがそのままグローバル空間で動くように実行
         const runJs = new Function(jsContent);
         runJs();
       } catch (e) {
