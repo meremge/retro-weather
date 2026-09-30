@@ -1,4 +1,4 @@
-// build.js（ウィジェット枠内限定・背景全自動最適化版）
+// build.js（全自動抽出版 + 枠外背景排除・緑枠ピッタリ収まり対応）
 const fs = require('fs');
 const path = require('path');
 
@@ -11,7 +11,7 @@ if (!fs.existsSync(srcHtmlPath)) {
 
 const rawHtml = fs.readFileSync(srcHtmlPath, 'utf8');
 
-// 1. <script> の中身（JSロジック）を抽出
+// 1. <script> の中身（JS）を抽出
 const scriptRegex = /<script[\s\S]*?>([\s\S]*?)<\/script>/gi;
 let extractedJs = '';
 let match;
@@ -20,24 +20,27 @@ while ((match = scriptRegex.exec(rawHtml)) !== null) {
   extractedJs += match[1] + '\n';
 }
 
-// 2. <script> を取り除いた純粋な HTML + CSS
+// 2. <script> を取り除いた「純粋な HTML + CSS」
 let cleanHtml = rawHtml.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
 
-// 3. body スタイルを :host（コンテナ本体）に変換し、外部への背景広がりを防止
-// width: fit-content / max-content にすることで枠外への背景ハミ出しを防ぎます
+// 3. body スタイルを :host に読み替えつつ、外側の全幅広がり＆余剰背景をカット
 cleanHtml = cleanHtml.replace(/(^|\}|\s)body([\s,\{\.\#])/gi, '$1:host$2');
 
 const scopeFixRule = `<style>
   @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
   
+  /* 最外層（:host）の全幅背景ハミ出しを完全抑制 */
   :host {
-    display: inline-block; /* 画面全体に広がるのを防ぎ、コンテンツのサイズに収める */
+    display: inline-block !important;
+    background: transparent !important;
+    width: auto !important;
     max-width: 100%;
     box-sizing: border-box;
   }
-  
+
   :host, * {
     font-family: 'DotGothic16', sans-serif !important;
+    box-sizing: border-box;
   }
 </style>`;
 
@@ -45,6 +48,7 @@ cleanHtml = scopeFixRule + cleanHtml;
 
 // 4. ウィジェット配信スクリプトの組み立て
 const widgetTemplate = `(function() {
+  // DotGothic16 フォントを親ページの head へ自動注入
   if (!document.querySelector("link[href*='DotGothic16']")) {
     const fontLink = document.createElement("link");
     fontLink.rel = "stylesheet";
@@ -55,6 +59,7 @@ const widgetTemplate = `(function() {
   const htmlContent = ${JSON.stringify(cleanHtml)};
   const jsContent = ${JSON.stringify(extractedJs)};
 
+  // 見た目（HTML/CSS）だけを Shadow DOM 化するカスタム要素
   class RetroWeatherWidget extends HTMLElement {
     constructor() {
       super();
@@ -72,6 +77,7 @@ const widgetTemplate = `(function() {
     customElements.define('retro-weather-widget', RetroWeatherWidget);
   }
 
+  // 画面への挿入 ＆ JS のグローバル実行
   const initWidget = () => {
     let container = document.getElementById('retro-weather-widget');
     if (!container) {
@@ -84,6 +90,7 @@ const widgetTemplate = `(function() {
       container.appendChild(document.createElement('retro-weather-widget'));
     }
 
+    // JSロジックを一度だけグローバル空間で実行
     if (!window.__retro_weather_initialized) {
       window.__retro_weather_initialized = true;
       try {
@@ -112,7 +119,8 @@ const widgetTemplate = `(function() {
   }
 })();`;
 
+// ファイル出力
 fs.writeFileSync(path.join(__dirname, 'widget.js'), widgetTemplate, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'weather_widget.js'), widgetTemplate, 'utf8');
 
-console.log('✨ [Success] 枠内収まり最適化版 widget.js を生成しました！');
+console.log('✨ [Success] 全コード保持・緑枠フィット修正版 widget.js を生成しました！');
